@@ -13,8 +13,8 @@
       --navy:        #1e3552;
       --navy-dark:   #0f1f36;
       --navy-bg:     #16213e;
-      --accent:      #dc2626;
-      --accent-dark: #b91c1c;
+      --accent:      #2563a0;
+      --accent-dark: #1a4f82;
       --gold:        #b45309;
       --gold-pale:   #fefce8;
       --green:       #065f46;
@@ -117,7 +117,7 @@
       line-height: 1.5; color: var(--navy-dark);
       transition: color var(--tr), border-color var(--tr), background var(--tr);
     }
-    .sub-art:hover { color: var(--accent); border-color: var(--accent); background: #fef2f2; }
+    .sub-art:hover { color: var(--accent); border-color: var(--accent); background: #eff6ff; }
     .sub-src { display: block; font-family: var(--font-b); font-size: .63rem; color: var(--muted-lt); font-weight: 400; margin-top: 3px; }
 
     /* ══ ニュースセクション ══════════════════════════════════════ */
@@ -168,17 +168,10 @@
 
     /* ══ サイドバー共通 ════════════════════════════════════════ */
     .sidebar {
-      position: sticky; top: 88px;
-      max-height: calc(100vh - 100px);
-      overflow-y: auto;
-      scrollbar-width: thin;
-      scrollbar-color: rgba(0,0,0,.1) transparent;
+      position: sticky;
+      top: 116px; /* JSが動的に上書き。CSSはフォールバック */
       display: flex; flex-direction: column; gap: 16px;
-      padding-right: 2px; /* スクロールバー分の余白 */
     }
-    .sidebar::-webkit-scrollbar { width: 4px; }
-    .sidebar::-webkit-scrollbar-track { background: transparent; }
-    .sidebar::-webkit-scrollbar-thumb { background: rgba(0,0,0,.12); border-radius: 4px; }
     .sc { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; box-shadow: var(--shadow-sm); }
     .sc-hd { padding: 10px 16px; display: flex; align-items: center; gap: 8px; border-bottom: 1px solid var(--border-lt); }
     .sc-title { font-family: var(--font-h); font-size: .84rem; font-weight: 800; letter-spacing: .05em; }
@@ -187,11 +180,11 @@
     .kotoba { border-top: 3px solid var(--gold); }
     .kotoba .sc-hd { background: #fffbeb; }
     .kotoba .sc-title { color: #92400e; }
-    .kotoba-body { padding: 16px; }
-    .kotoba-word { font-family: var(--font-h); font-size: 1.55rem; font-weight: 900; color: var(--gold); text-align: center; letter-spacing: .1em; margin-bottom: 4px; }
-    .kotoba-kana { font-size: .68rem; color: var(--muted); text-align: center; letter-spacing: .15em; margin-bottom: 2px; }
-    .kotoba-en { font-size: .68rem; font-weight: 700; color: var(--accent); text-align: center; margin-bottom: 12px; }
-    .kotoba-desc { font-size: .79rem; color: var(--text-2); line-height: 1.82; border-top: 1px solid #fde68a; padding-top: 12px; }
+    .kotoba-body { padding: 18px 16px; }
+    .kotoba-word { font-family: var(--font-h); font-size: 1.65rem; font-weight: 900; color: var(--gold); text-align: center; letter-spacing: .1em; margin-bottom: 4px; }
+    .kotoba-kana { font-size: .72rem; color: var(--muted); text-align: center; letter-spacing: .15em; margin-bottom: 2px; }
+    .kotoba-en { font-size: .72rem; font-weight: 700; color: var(--accent); text-align: center; margin-bottom: 12px; }
+    .kotoba-desc { font-size: .82rem; color: var(--text-2); line-height: 1.82; border-top: 1px solid #fde68a; padding-top: 12px; }
 
     /* ══ 余白コラム ════════════════════════════════════════════ */
     .yoraku { border-top: 3px solid var(--green); }
@@ -508,16 +501,61 @@
 <button class="scroll-top" id="scroll-top-btn" onclick="scrollTo({top:0,behavior:'smooth'})">↑</button>
 
 <script>
+  /* ── ナビ平滑スクロール ── */
   document.querySelectorAll('.mh-nav a').forEach(a => {
     a.addEventListener('click', e => {
-      const id = a.getAttribute('href').slice(1);
-      const el = document.getElementById(id);
+      const el = document.getElementById(a.getAttribute('href').slice(1));
       if (el) { e.preventDefault(); el.scrollIntoView({ behavior: 'smooth', block: 'start' }); }
     });
   });
+
+  /* ── スクロールトップボタン ── */
   window.addEventListener('scroll', () => {
     document.getElementById('scroll-top-btn').classList.toggle('visible', scrollY > 400);
-  });
+  }, { passive: true });
+
+  /* ── プログレッシブスティッキーサイドバー ──────────────────────
+     サイドバーが画面より長い場合、ページスクロールに連動して
+     サイドバーが少しずつ上に動き、底まで読める仕組み。
+     (短い場合はマストヘッド直下で静止する通常のstickyと同じ)
+  ────────────────────────────────────────────────────────────── */
+  (function () {
+    const sidebar  = document.querySelector('.sidebar');
+    const masthead = document.querySelector('.masthead');
+    if (!sidebar || !masthead) return;
+
+    let lastY    = window.scrollY;
+    let currentTop;                       // 現在の top 値（px）
+
+    function init() {
+      currentTop = masthead.offsetHeight; // マストヘッド直下からスタート
+      sidebar.style.top = currentTop + 'px';
+    }
+
+    function onScroll() {
+      const mhH  = masthead.offsetHeight;   // マストヘッド高さ
+      const winH = window.innerHeight;      // ビューポート高さ
+      const sbH  = sidebar.scrollHeight;    // サイドバーの全高
+      const dy   = window.scrollY - lastY;  // スクロール量（下=正）
+
+      if (sbH + mhH <= winH) {
+        // サイドバーが画面に収まる → 通常のsticky（マストヘッド下に固定）
+        currentTop = mhH;
+      } else {
+        // サイドバーが画面より長い → スクロールに連動して top を動かす
+        const maxTop = mhH;              // 上限：マストヘッド直下
+        const minTop = winH - sbH;       // 下限：底が画面底に揃う（負の値になる）
+        currentTop = Math.min(maxTop, Math.max(minTop, currentTop - dy));
+      }
+
+      sidebar.style.top = currentTop + 'px';
+      lastY = window.scrollY;
+    }
+
+    init();
+    window.addEventListener('scroll', onScroll, { passive: true });
+    window.addEventListener('resize', init,    { passive: true });
+  })();
 </script>
 </body>
 </html>

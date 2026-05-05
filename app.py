@@ -40,16 +40,13 @@ FEEDS = {
         ('朝日新聞 政治', 'https://www.asahi.com/rss/politics/index.rdf'),
         ('NHK政治',       'https://www3.nhk.or.jp/rss/news/cat4.xml'),   # 末尾
     ],
-    '国際': [
-        ('Reuters World',    'https://feeds.reuters.com/reuters/worldNews'),
-        ('NYT World',        'https://rss.nytimes.com/services/xml/rss/nyt/World.xml'),
-        ('BBC World',        'http://feeds.bbci.co.uk/news/world/rss.xml'),
-        ('CNN World',        'http://rss.cnn.com/rss/edition_world.rss'),
-        ('Guardian World',   'https://www.theguardian.com/world/rss'),
-        ('Washington Post',  'https://feeds.washingtonpost.com/rss/world'),
-        ('AFP BB News',      'https://feeds.afpbb.com/rss/afpbb/afpbbnews'),
-        ('Yahoo! 国際',      'https://news.yahoo.co.jp/rss/topics/world.xml'),
-        ('NHK国際',          'https://www3.nhk.or.jp/rss/news/cat5.xml'),# 末尾
+    '国際': [  # 日本語で読めるソースに統一
+        ('AFP BB News',        'https://feeds.afpbb.com/rss/afpbb/afpbbnews'),
+        ('BBC Japan',          'https://feeds.bbci.co.uk/japanese/rss.xml'),
+        ('Reuters JP',         'https://jp.reuters.com/rssFeed/worldNews'),
+        ('ニューズウィーク日本', 'https://www.newsweekjapan.jp/feed/'),
+        ('Yahoo! 国際',        'https://news.yahoo.co.jp/rss/topics/world.xml'),
+        ('NHK国際',            'https://www3.nhk.or.jp/rss/news/cat5.xml'),
     ],
     'IT・テック': [
         ('ITmedia',    'https://rss.itmedia.co.jp/rss/2.0/news_bursts.xml'),
