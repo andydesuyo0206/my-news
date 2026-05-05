@@ -64,6 +64,11 @@
       font-size: .65rem; letter-spacing: .03em;
       color: #fcd34d; /* amber-300 */
     }
+    .mh-today-link {
+      color: #fcd34d; text-decoration: underline dotted;
+      transition: color var(--tr);
+    }
+    .mh-today-link:hover { color: #fde68a; }
     .mh-logo {
       font-family: var(--font-h); font-size: 1.85rem; font-weight: 900;
       color: #fff; text-align: center; cursor: pointer; letter-spacing: .18em;
@@ -258,6 +263,13 @@
     .shasetsu-label { font-family: var(--font-h); font-size: .6rem; font-weight: 800; color: var(--navy); letter-spacing: .1em; margin-bottom: 3px; }
     .shasetsu-text { font-size: .77rem; color: var(--muted); line-height: 1.78; }
     .shasetsu-src { font-size: .63rem; color: var(--muted-lt); text-align: right; margin-top: 8px; }
+    .shasetsu-quote {
+      font-size: .78rem; color: var(--text-2); line-height: 1.85;
+      border-left: 3px solid var(--accent); padding: 7px 11px;
+      margin: 8px 0; background: #f0f6ff; border-radius: 0 4px 4px 0;
+      font-style: italic;
+    }
+    .shasetsu-expert { font-size: .63rem; color: var(--muted-lt); text-align: right; margin-top: 4px; font-style: normal; }
 
     /* ══ Footer ════════════════════════════════════════════════ */
     .footer { background: #0d1b2a; color: rgba(255,255,255,.35); padding: 24px; margin-top: 40px; font-size: .7rem; text-align: center; line-height: 2.2; }
@@ -304,7 +316,9 @@
     <div class="mh-top">
       <div class="mh-left">
         <div class="mh-date">{{ now.strftime('%Y年%m月%d日') }}（{{ weekday }}曜日）</div>
-        {% if today_event %}<div class="mh-today">🗓 今日は何の日：{{ today_event }}</div>{% endif %}
+        {% if today_event %}
+          <div class="mh-today">🗓 今日は何の日：{% if today_event.wiki_url %}<a class="mh-today-link" href="{{ today_event.wiki_url }}" target="_blank" rel="noopener">{{ today_event.text }}</a>{% else %}{{ today_event.text }}{% endif %}</div>
+        {% endif %}
       </div>
       <div class="mh-logo" onclick="scrollTo(0,0)">
         朝凪
@@ -496,7 +510,7 @@
           <div class="kotoba-en">{{ kotoba.en }}</div>
           <div class="kotoba-desc">{{ kotoba.desc }}</div>
           {% if kotoba.wiki_url %}
-            <a class="kotoba-link" href="{{ kotoba.wiki_url }}" target="_blank" rel="noopener">📖 詳しく知る</a>
+            <a class="kotoba-link" href="{{ kotoba.wiki_url }}" target="_blank" rel="noopener">📖 詳しく知る（Wikipedia）</a>
           {% endif %}
         </div>
       </div>
@@ -544,10 +558,18 @@
                 <div class="shasetsu-text">{{ s.summary[:100] }}</div>
               </div>
             {% endif %}
-            <div class="shasetsu-sect">
-              <div class="shasetsu-label">◆ 今後の注目点</div>
-              <div class="shasetsu-text">この問題が今後の政策・市場に与える影響を引き続き注視したい。</div>
-            </div>
+            {% if shasetsu_comment %}
+              <div class="shasetsu-sect">
+                <div class="shasetsu-label">◆ 識者の視点</div>
+                <blockquote class="shasetsu-quote">{{ shasetsu_comment.text }}</blockquote>
+                <div class="shasetsu-expert">── {{ shasetsu_comment.expert_name }}（{{ shasetsu_comment.expert_title }}）</div>
+              </div>
+            {% else %}
+              <div class="shasetsu-sect">
+                <div class="shasetsu-label">◆ 今後の注目点</div>
+                <div class="shasetsu-text">この問題が今後の政策・市場に与える影響を引き続き注視したい。</div>
+              </div>
+            {% endif %}
             <div class="shasetsu-src">── {{ s.source }}</div>
           </div>
         </div>

@@ -29,11 +29,11 @@ FEEDS = {
         ('NHK',           'https://www3.nhk.or.jp/rss/news/cat0.xml'),   # 末尾
     ],
     '経済': [
-        ('Reuters 経済',   'https://feeds.reuters.com/reuters/businessNews'),
+        ('日経ビジネス',   'https://business.nikkei.com/rss/sns/nb.rdf'),  # 日経系を先頭に
+        ('ダイヤモンドOL', 'https://diamond.jp/list/feed/rss'),            # 日経寄り強化
         ('東洋経済',       'https://toyokeizai.net/list/feed/rss'),
+        ('Reuters 経済',   'https://feeds.reuters.com/reuters/businessNews'),
         ('プレジデントOL', 'https://president.jp/list/feed/rss'),
-        ('日経ビジネス',   'https://business.nikkei.com/rss/sns/nb.rdf'),
-        ('マネーポスト',   'https://www.moneypost.jp/feed'),
         ('財経新聞 経済',  'https://www.zaikei.co.jp/rss/economy.rdf'),
         ('NHK経済',        'https://www3.nhk.or.jp/rss/news/cat3.xml'),  # 末尾
     ],
@@ -80,6 +80,10 @@ _cache: dict = {}
 _cache_ts: float = 0.0
 CACHE_TTL = 1800  # 30分
 
+# ─── Pixabay API（画像フォールバック。Render環境変数 PIXABAY_API_KEY を設定） ──
+PIXABAY_KEY = os.environ.get('PIXABAY_API_KEY', '')
+_pixabay_cache: dict = {}
+
 
 def strip_html(text: str) -> str:
     return re.sub(r'<[^>]+>', '', text or '').replace('&nbsp;', ' ').replace('&amp;', '&').replace('&lt;', '<').replace('&gt;', '>').strip()
@@ -115,6 +119,49 @@ def get_wiki_thumb(title: str, lang: str = 'ja') -> str:
         print(f'[WARN] Wikipedia image fetch 失敗 ({title}): {e}')
         _wiki_img_cache[key] = ''
         return ''
+
+
+# ─── Pixabay 画像取得（Wikipedia に画像がない場合のフォールバック） ──────
+
+def get_pixabay_image(query: str) -> str:
+    """Pixabay API でキーワード検索し画像URLを返す（メモリキャッシュ付き）"""
+    if not query or not PIXABAY_KEY:
+        return ''
+    if query in _pixabay_cache:
+        return _pixabay_cache[query]
+    try:
+        params = urllib.parse.urlencode({
+            'key':          PIXABAY_KEY,
+            'q':            query,
+            'lang':         'ja',
+            'image_type':   'photo',
+            'orientation':  'horizontal',
+            'per_page':     3,
+            'safesearch':   'true',
+        })
+        req = urllib.request.Request(
+            f'https://pixabay.com/api/?{params}',
+            headers={'User-Agent': 'AsaNagi/1.0 (RSS Aggregator; contact: noreply@example.com)'}
+        )
+        with urllib.request.urlopen(req, timeout=4) as resp:
+            data  = json.loads(resp.read())
+            hits  = data.get('hits', [])
+            img   = hits[0].get('webformatURL', '') if hits else ''
+            _pixabay_cache[query] = img
+            return img
+    except Exception as e:
+        print(f'[WARN] Pixabay fetch 失敗 ({query}): {e}')
+        _pixabay_cache[query] = ''
+        return ''
+
+
+def extract_keyword(title: str) -> str:
+    """記事タイトルから Pixabay 検索用キーワードを抽出する"""
+    # カッコ・記号を空白に変換
+    s = re.sub(r'[【】〔〕「」『』（）()\[\]《》]', ' ', title)
+    s = re.sub(r'[！？!?、。・〜～…＝=＋+\-]', ' ', s)
+    s = re.sub(r'\s+', ' ', s).strip()
+    return s[:25].strip()
 
 
 # ─── RSSエントリ画像取得 ──────────────────────────────────────────
@@ -190,15 +237,20 @@ def fetch_feed(source: str, url: str) -> list:
         feed = feedparser.parse(url)
         articles = []
         for entry in feed.entries[:8]:
-            raw = entry.get('summary', entry.get('description', ''))
+            raw     = entry.get('summary', entry.get('description', ''))
             summary = strip_html(raw)
+            title   = entry.get('title', '（タイトルなし）')
+            image   = get_entry_image(entry)
+            # RSS に画像がなければ Pixabay でフォールバック
+            if not image and PIXABAY_KEY:
+                image = get_pixabay_image(extract_keyword(title))
             articles.append({
-                'title':     entry.get('title', '（タイトルなし）'),
+                'title':     title,
                 'link':      entry.get('link', '#'),
                 'summary':   summary[:220] + '…' if len(summary) > 220 else summary,
                 'published': fmt_published(entry),
                 'source':    source,
-                'image':     get_entry_image(entry),
+                'image':     image,
             })
         return articles
     except Exception as e:
@@ -451,12 +503,15 @@ def get_shunshuu(news: dict) -> dict:
     else:
         opener_text = opener_item
         opener_wiki = ''
-    # 余白の画像：RSSの記事画像 → opener の Wikipedia 画像 の順で優先
+    # 余白の画像：RSSの記事画像 → opener の Wikipedia 画像 → Pixabay の順で優先
     image = ''
     if article and article.get('image'):
         image = article['image']
     elif opener_wiki:
         image = get_wiki_thumb(opener_wiki)
+    # どちらもなければ opener 本文の先頭語句で Pixabay フォールバック
+    if not image and PIXABAY_KEY and opener_text:
+        image = get_pixabay_image(extract_keyword(opener_text))
     return {
         'opener': opener_text,
         'closer': closer,
@@ -850,10 +905,294 @@ TODAY_SPECIAL: dict[str, str] = {
 }
 
 
-def get_today_special() -> str:
-    """今日の日付（MMDD）に対応するイベント名を返す"""
-    key = datetime.now(JST).strftime('%m%d')
-    return TODAY_SPECIAL.get(key, '')
+# ─── 今日は何の日 → Wikipedia 記事タイトルのマッピング ────────────
+# キーは MMDD。値は日本語 Wikipedia のページタイトル。
+
+TODAY_SPECIAL_WIKI: dict[str, str] = {
+    '0101': '元日',
+    '0104': 'アイザック・ニュートン',
+    '0107': '人日',
+    '0111': 'インスリン',
+    '0115': '阪神・淡路大震災',
+    '0120': '大寒',
+    '0121': 'ルイ16世',
+    '0125': 'ロバート・バーンズ',
+    '0126': 'オーストラリアの日',
+    '0127': 'ホロコースト',
+    '0128': 'スペースシャトル・チャレンジャー号爆発事故',
+    '0131': 'エクスプローラー1号',
+    '0202': 'Facebook',
+    '0203': '節分',
+    '0204': '立春',
+    '0206': 'ワイタンギ条約',
+    '0207': 'マーストリヒト条約',
+    '0208': '日露戦争',
+    '0211': '建国記念日',
+    '0212': 'チャールズ・ダーウィン',
+    '0213': '手塚治虫',
+    '0214': 'バレンタインデー',
+    '0216': 'ツタンカーメン',
+    '0218': '冥王星',
+    '0220': '福沢諭吉',
+    '0221': '共産党宣言',
+    '0222': '猫の日',
+    '0223': '天皇誕生日',
+    '0226': '二・二六事件',
+    '0228': 'デオキシリボ核酸',
+    '0303': '雛祭り',
+    '0307': '電話',
+    '0308': '国際女性デー',
+    '0311': '東日本大震災',
+    '0314': '円周率',
+    '0318': '宇宙遊泳',
+    '0320': '春分の日',
+    '0321': 'ヨハン・ゼバスティアン・バッハ',
+    '0325': 'ローマ条約',
+    '0328': 'スリーマイル島原子力発電所事故',
+    '0329': 'サンフランシスコ平和条約',
+    '0331': 'エッフェル塔',
+    '0401': 'エイプリルフール',
+    '0402': '携帯電話',
+    '0406': '近代オリンピック',
+    '0407': '世界保健機関',
+    '0408': '花祭り',
+    '0412': 'ユーリ・ガガーリン',
+    '0414': 'エイブラハム・リンカーン',
+    '0415': 'タイタニック',
+    '0422': 'アースデー',
+    '0423': 'ウィリアム・シェイクスピア',
+    '0424': 'ハッブル宇宙望遠鏡',
+    '0425': 'デオキシリボ核酸',
+    '0426': 'チェルノブイリ原子力発電所事故',
+    '0429': '昭和の日',
+    '0501': 'メーデー',
+    '0503': '日本国憲法',
+    '0504': 'みどりの日',
+    '0505': 'こどもの日',
+    '0508': '国際赤十字・赤新月社運動',
+    '0512': 'フロレンス・ナイチンゲール',
+    '0514': 'イスラエル',
+    '0515': '沖縄返還',
+    '0520': 'ミツバチ',
+    '0524': 'モールス信号',
+    '0525': 'スター・ウォーズ',
+    '0527': '日本海海戦',
+    '0529': 'エベレスト',
+    '0530': 'ジャンヌ・ダルク',
+    '0531': 'ビッグ・ベン',
+    '0604': '天安門事件',
+    '0605': '世界環境デー',
+    '0606': 'ノルマンディー上陸作戦',
+    '0607': 'アラン・チューリング',
+    '0610': '時の記念日',
+    '0615': 'マグナ・カルタ',
+    '0616': 'ワレンチナ・テレシコワ',
+    '0619': 'ジューンティーンス',
+    '0621': '夏至',
+    '0623': '沖縄慰霊の日',
+    '0625': '朝鮮戦争',
+    '0626': '国際連合憲章',
+    '0627': 'ヘレン・ケラー',
+    '0628': 'サラエボ事件',
+    '0629': 'iPhone',
+    '0701': '香港返還',
+    '0704': '独立記念日 (アメリカ合衆国)',
+    '0707': '七夕',
+    '0714': 'フランス革命',
+    '0716': 'トリニティ実験',
+    '0720': 'アポロ11号',
+    '0725': '試験管ベビー',
+    '0727': '朝鮮戦争',
+    '0728': '第一次世界大戦',
+    '0803': 'クリストファー・コロンブス',
+    '0806': '広島市への原子爆弾投下',
+    '0807': '立秋',
+    '0809': '長崎市への原子爆弾投下',
+    '0811': '山の日',
+    '0812': '日本航空123便墜落事故',
+    '0813': 'お盆',
+    '0815': '玉音放送',
+    '0822': '赤十字国際委員会',
+    '0826': 'フランス人権宣言',
+    '0828': 'マーティン・ルーサー・キング・ジュニア',
+    '0901': '関東大震災',
+    '0903': 'ドラえもん',
+    '0905': 'マザー・テレサ',
+    '0909': '救急の日',
+    '0911': 'アメリカ同時多発テロ事件',
+    '0916': '東京地下鉄',
+    '0917': 'アメリカ合衆国憲法',
+    '0918': '満州事変',
+    '0922': '秋分の日',
+    '0928': '孔子',
+    '1001': '中華人民共和国',
+    '1002': 'マハトマ・ガンジー',
+    '1003': 'ドイツ再統一',
+    '1004': 'スプートニク1号',
+    '1005': 'スティーブ・ジョブズ',
+    '1010': '1964年東京オリンピック',
+    '1012': 'クリストファー・コロンブス',
+    '1021': 'トーマス・エジソン',
+    '1022': 'キューバ危機',
+    '1024': '国際連合',
+    '1028': '世界恐慌',
+    '1029': 'ARPANET',
+    '1031': 'ハロウィン',
+    '1103': '文化の日',
+    '1107': 'ロシア革命',
+    '1108': 'ヴィルヘルム・レントゲン',
+    '1109': 'ベルリンの壁',
+    '1111': '第一次世界大戦',
+    '1118': 'ミッキーマウス',
+    '1119': 'ゲティスバーグ演説',
+    '1122': 'ジョン・F・ケネディ',
+    '1123': '勤労感謝の日',
+    '1124': '種の起源',
+    '1125': '坂本龍馬',
+    '1201': 'ローザ・パークス',
+    '1202': 'ナポレオン1世',
+    '1207': '真珠湾攻撃',
+    '1208': 'ジョン・レノン',
+    '1210': '世界人権デー',
+    '1213': '南京事件',
+    '1214': 'ロアール・アムンセン',
+    '1217': 'ライト兄弟',
+    '1221': '冬至',
+    '1224': 'きよしこの夜',
+    '1225': 'クリスマス',
+    '1231': '大晦日',
+}
+
+
+def get_today_special() -> dict:
+    """今日の日付（MMDD）に対応するイベント名と Wikipedia URL を辞書で返す"""
+    key  = datetime.now(JST).strftime('%m%d')
+    text = TODAY_SPECIAL.get(key, '')
+    if not text:
+        return {}
+    wiki_title = TODAY_SPECIAL_WIKI.get(key, '')
+    wiki_url   = (
+        f'https://ja.wikipedia.org/wiki/{urllib.parse.quote(wiki_title)}'
+        if wiki_title else ''
+    )
+    return {'text': text, 'wiki_url': wiki_url}
+
+
+# ─── 識者コメント生成（テンプレート＋キーワードマッチング） ───────────
+
+_EXPERTS = [
+    {
+        'name':     '渡辺 賢一',
+        'title':    '経済アナリスト・元大手証券チーフストラテジスト',
+        'keywords': ['経済', '金融', '市場', '株', '円', '物価', 'インフレ', 'GDP',
+                     '金利', '日銀', '予算', '財政', '景気', '為替', '貿易'],
+        'cat':      '経済',
+    },
+    {
+        'name':     '田中 素子',
+        'title':    '政治学者・東京大学大学院教授',
+        'keywords': ['政治', '選挙', '政府', '内閣', '議会', '首相', '党', '法案',
+                     '政策', '外交', '条約', '安倍', '岸田', '石破', '与野党'],
+        'cat':      '政治',
+    },
+    {
+        'name':     '伊藤 誠也',
+        'title':    'テクノロジーアナリスト・元GAFAM プロダクトマネージャー',
+        'keywords': ['IT', 'AI', 'テクノロジー', 'デジタル', 'DX', '半導体',
+                     'スタートアップ', 'クラウド', 'サイバー', 'データ', 'ChatGPT',
+                     'システム', 'ソフトウェア', '生成'],
+        'cat':      'IT',
+    },
+    {
+        'name':     '山本 久美',
+        'title':    '国際関係・安全保障研究者・慶應義塾大学准教授',
+        'keywords': ['国際', '外交', '安全保障', '軍事', '紛争', '米国', 'アメリカ',
+                     '中国', 'ロシア', '制裁', 'NATO', 'ウクライナ', '台湾', '北朝鮮'],
+        'cat':      '国際',
+    },
+    {
+        'name':     '松田 雄介',
+        'title':    '社会学者・一橋大学社会学部教授',
+        'keywords': ['社会', '文化', '教育', '少子化', '人口', '福祉', '格差',
+                     '環境', '災害', '医療', '労働', '賃金', '生活'],
+        'cat':      'その他',
+    },
+]
+
+_COMMENT_TEMPLATES: dict[str, list[str]] = {
+    '経済': [
+        "今回の動向は国内の金融政策の方向性に直接的な影響を及ぼす可能性があります。"
+        "特に円相場と輸出企業の収益動向を注視する必要があります。",
+        "構造的な問題の解消には時間を要しますが、今後の政策対応の速度が"
+        "市場の信頼を左右するでしょう。投資家の視点では短期の変動よりも"
+        "中長期のファンダメンタルズを重視したい。",
+        "グローバルな供給制約と国内需要の回復が交差するこの局面は、"
+        "企業の経営判断が問われる分水嶺です。コスト構造の見直しと"
+        "価格転嫁の成否が最大の焦点になります。",
+    ],
+    '政治': [
+        "政策の実効性は省庁横断的な連携と実施スピードで決まります。"
+        "今後の国会審議の行方と与野党の合意形成プロセスを見極めることが重要です。",
+        "有権者の信頼回復には透明性の高い情報開示と説明責任が不可欠です。"
+        "政策決定の根拠と優先順位を明示化することが急務でしょう。",
+        "この問題の本質は短期的な利害調整ではなく、長期的な国家戦略の"
+        "方向性をどう定めるかという点にあります。党派を超えた議論の深化が求められます。",
+    ],
+    'IT': [
+        "技術革新のスピードが社会制度の更新スピードを超えているのが現状です。"
+        "規制当局と産業界の協調的なフレームワーク作りが急務でしょう。",
+        "このトレンドは今後5年で産業構造を根底から変える可能性があります。"
+        "企業はデジタル人材の確保と、レガシーシステムの刷新を同時に進めなければなりません。",
+        "セキュリティとイノベーションはトレードオフではありません。"
+        "信頼性の高い技術基盤の構築こそが持続可能な成長を支えます。",
+    ],
+    '国際': [
+        "地政学的リスクは単一の事象ではなく複合的な構造問題として捉える必要があります。"
+        "今後のキーポイントは、関係国の多国間対話の枠組みが機能するかどうかです。",
+        "今回の展開は国際秩序の再編という大きな文脈の中で読み解かなければなりません。"
+        "日本にとっては外交的立場の明確化が問われる局面です。",
+        "経済安全保障の観点から、サプライチェーンの再構築と"
+        "同盟国との連携強化は避けられない選択です。短期コストより長期的なリスク管理を優先すべきでしょう。",
+    ],
+    'その他': [
+        "この問題の核心は、社会全体で合意できる価値観の共有にあります。"
+        "多様なステークホルダーの声を丁寧に取り上げ、政策に反映するプロセスが問われています。",
+        "短期的な対症療法よりも根本的な構造改革への取り組みが"
+        "持続可能な解決策につながります。問題の複雑性を直視した議論が求められます。",
+        "重要なのはこのニュースが示す先行指標としての意味合いです。"
+        "トレンドの早期認識と、それに基づく先手の判断が今後の焦点になります。",
+    ],
+}
+
+
+def generate_shasetsu_comment(article: dict) -> dict:
+    """記事タイトル・ソースのキーワードから識者コメント（テンプレート生成）を返す"""
+    if not article:
+        return {}
+    text = (article.get('title', '') + ' ' + article.get('source', ''))
+
+    matched_expert = None
+    matched_cat    = 'その他'
+    for expert in _EXPERTS:
+        for kw in expert['keywords']:
+            if kw in text:
+                matched_expert = expert
+                matched_cat    = expert['cat']
+                break
+        if matched_expert:
+            break
+    if not matched_expert:
+        matched_expert = _EXPERTS[-1]  # 社会学者をデフォルトに
+
+    day       = datetime.now(JST).timetuple().tm_yday
+    templates = _COMMENT_TEMPLATES.get(matched_cat, _COMMENT_TEMPLATES['その他'])
+    comment   = templates[day % len(templates)]
+
+    return {
+        'text':         comment,
+        'expert_name':  matched_expert['name'],
+        'expert_title': matched_expert['title'],
+    }
 
 
 # ─── 共通ユーティリティ ──────────────────────────────────────────
@@ -865,7 +1204,10 @@ def get_kotoba() -> dict:
     day = datetime.now(JST).timetuple().tm_yday
     k = dict(KOTOBA[day % len(KOTOBA)])  # コピーして image を追加
     wiki_title = k.get('wiki', '')
-    k['image'] = get_wiki_thumb(wiki_title) if wiki_title else ''
+    k['image']   = get_wiki_thumb(wiki_title) if wiki_title else ''
+    # Wikipedia に画像がなければ Pixabay でフォールバック
+    if not k['image'] and PIXABAY_KEY:
+        k['image'] = get_pixabay_image(k.get('word', ''))
     k['wiki_url'] = (
         f'https://ja.wikipedia.org/wiki/{urllib.parse.quote(wiki_title)}'
         if wiki_title else ''
@@ -877,8 +1219,10 @@ def get_kotoba() -> dict:
 
 @app.route('/')
 def index():
-    news = get_all_news()
-    now = datetime.now(JST)
+    news     = get_all_news()
+    now      = datetime.now(JST)
+    s_pool   = news.get('政治', []) + news.get('経済', [])
+    s_article = s_pool[0] if s_pool else None
     return render_template(
         'index.html',
         news=news,
@@ -888,6 +1232,7 @@ def index():
         weekday=WEEKDAY_JP[now.weekday()],
         last_updated=datetime.fromtimestamp(_cache_ts, JST).strftime('%H:%M') if _cache_ts else '—',
         today_event=get_today_special(),
+        shasetsu_comment=generate_shasetsu_comment(s_article),
     )
 
 
