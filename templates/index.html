@@ -138,7 +138,9 @@
       padding: 2px 8px; border-radius: 10px;
       background: rgba(255,255,255,.12); color: rgba(255,255,255,.75);
     }
-    .ov-badge-ai { background: #1d4ed8; color: #bfdbfe; }
+    .ov-badge-ai     { background: #1d4ed8; color: #bfdbfe; }
+    .ov-badge-gemini { background: #14532d; color: #86efac; }
+    .ov-badge-tmpl   { background: #78350f; color: #fcd34d; }
     .overview-themes {
       padding: 12px 24px 0; display: flex; gap: 6px; flex-wrap: wrap;
     }
@@ -451,6 +453,13 @@
           <div class="overview-title">🗞 主要ニュース整理</div>
           <div class="overview-badges">
             <span class="ov-badge ov-badge-ai">✦ AIによる分析</span>
+            {% if news_overview.source in ['gemini', 'gemini_cached'] %}
+              <span class="ov-badge ov-badge-gemini">● Gemini{% if news_overview.source == 'gemini_cached' %}キャッシュ{% endif %}</span>
+            {% elif news_overview.source == 'template_api_error' %}
+              <span class="ov-badge ov-badge-tmpl">⚠ API失敗</span>
+            {% else %}
+              <span class="ov-badge ov-badge-tmpl">⚠ キー未設定</span>
+            {% endif %}
           </div>
         </div>
         {% if news_overview.themes %}
@@ -606,7 +615,7 @@
           <div class="kotoba-en">{{ kotoba.en }}</div>
           <div class="kotoba-desc">{{ kotoba.desc }}</div>
           {% if kotoba.wiki_url %}
-            <a class="kotoba-link" href="{{ kotoba.wiki_url }}" target="_blank" rel="noopener">📖 詳しく知る（Wikipedia）</a>
+            <a class="kotoba-link" href="{{ kotoba.wiki_url }}" target="_blank" rel="noopener">📖 詳しく知る（{{ kotoba.link_label }}）</a>
           {% endif %}
         </div>
       </div>

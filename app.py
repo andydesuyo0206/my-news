@@ -419,7 +419,7 @@ KOTOBA = [
      'wiki': '量子コンピュータ'},
     {'word': '物価目標', 'reading': 'ぶっかもくひょう', 'en': 'Inflation Target',
      'desc': '中央銀行が設定する物価上昇率の目標値。日銀は2%を目標とし、長年の金融緩和政策の根拠となっている。',
-     'wiki': 'インフレーション・ターゲティング'},
+     'wiki': '', 'google': '物価目標 インフレーション ターゲティング 日銀'},
     {'word': 'フリーランス', 'reading': 'ふりーらんす', 'en': 'Freelance',
      'desc': '特定の企業に属さず、個人で仕事を請け負う働き方。2024年のフリーランス保護新法により権利保護が強化された。',
      'wiki': 'フリーランス'},
@@ -1013,14 +1013,28 @@ TODAY_SPECIAL_WIKI: dict[str, str] = {
     '0503': '日本国憲法',
     '0504': 'みどりの日',
     '0505': 'こどもの日',
+    '0506': '谷崎潤一郎',
+    '0507': 'ピョートル・チャイコフスキー',
     '0508': '国際赤十字・赤新月社運動',
+    '0509': 'ロベール・シューマン',
+    '0510': '大陸横断鉄道',
+    '0511': 'ディープ・ブルー_(コンピュータ)',
     '0512': 'フロレンス・ナイチンゲール',
+    '0513': 'フォーミュラ1',
     '0514': 'イスラエル',
     '0515': '沖縄返還',
+    '0516': '田部井淳子',
+    '0518': 'セント・ヘレンズ山',
+    '0519': '伊藤博文',
     '0520': 'ミツバチ',
+    '0521': '小倉百人一首',
+    '0522': 'ヴィクトル・ユゴー',
+    '0523': 'ニコラウス・コペルニクス',
     '0524': 'モールス信号',
     '0525': 'スター・ウォーズ',
+    '0526': '排日移民法',
     '0527': '日本海海戦',
+    '0528': 'ダンケルクの戦い',
     '0529': 'エベレスト',
     '0530': 'ジャンヌ・ダルク',
     '0531': 'ビッグ・ベン',
@@ -1236,7 +1250,10 @@ def generate_news_overview(news: dict) -> dict:
     # ── AI 概観テキスト（30分キャッシュ）────────────────────────────
     if GEMINI_KEY and time.time() - _ai_cache_ts < CACHE_TTL and 'overview' in _ai_cache:
         summary = _ai_cache['overview']
+        source  = 'gemini_cached'
+        print('[DEBUG] generate_news_overview: キャッシュ済み Gemini テキストを使用')
     elif GEMINI_KEY:
+        print(f'[DEBUG] generate_news_overview: GEMINI_KEY 設定済み ({len(GEMINI_KEY)}文字) → API 呼び出し開始')
         cat_lines = []
         for cat in ['主要', '経済', '政治', '国際', 'IT・テック', '国内・社会']:
             arts = news.get(cat, [])
@@ -1256,12 +1273,18 @@ def generate_news_overview(news: dict) -> dict:
             summary = ai_text
             _ai_cache['overview'] = summary
             _ai_cache_ts = time.time()
+            source  = 'gemini'
+            print('[DEBUG] generate_news_overview: Gemini 生成成功 → AI テキスト使用')
         else:
             summary = _template_summary(day, date_str, themes)
+            source  = 'template_api_error'
+            print('[WARN] generate_news_overview: Gemini 失敗 → テンプレートにフォールバック')
     else:
         summary = _template_summary(day, date_str, themes)
+        source  = 'template_no_key'
+        print('[DEBUG] generate_news_overview: GEMINI_KEY 未設定 → テンプレート使用')
 
-    return {'summary': summary, 'themes': themes, 'highlights': highlights}
+    return {'summary': summary, 'themes': themes, 'highlights': highlights, 'source': source}
 
 
 # ─── 識者コメント生成（テンプレート＋キーワードマッチング） ───────────
@@ -1524,15 +1547,22 @@ WEEKDAY_JP = ['月', '火', '水', '木', '金', '土', '日']
 def get_kotoba() -> dict:
     day = datetime.now(JST).timetuple().tm_yday
     k = dict(KOTOBA[day % len(KOTOBA)])  # コピーして image を追加
-    wiki_title = k.get('wiki', '')
-    k['image']   = get_wiki_thumb(wiki_title) if wiki_title else ''
+    wiki_title   = k.get('wiki', '')
+    google_query = k.get('google', '')
+    k['image'] = get_wiki_thumb(wiki_title) if wiki_title else ''
     # Wikipedia に画像がなければ Pixabay でフォールバック
     if not k['image'] and PIXABAY_KEY:
         k['image'] = get_pixabay_image(k.get('word', ''))
-    k['wiki_url'] = (
-        f'https://ja.wikipedia.org/wiki/{urllib.parse.quote(wiki_title)}'
-        if wiki_title else ''
-    )
+    # リンク URL・ラベルの決定（Wikipedia 優先 → Google 検索フォールバック）
+    if wiki_title:
+        k['wiki_url']    = f'https://ja.wikipedia.org/wiki/{urllib.parse.quote(wiki_title)}'
+        k['link_label']  = 'Wikipedia'
+    elif google_query:
+        k['wiki_url']    = f'https://www.google.com/search?q={urllib.parse.quote(google_query)}'
+        k['link_label']  = 'Google で調べる'
+    else:
+        k['wiki_url']   = ''
+        k['link_label'] = ''
     return k
 
 
