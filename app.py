@@ -23,12 +23,11 @@ FEEDS = {
         ('Yahoo!ニュース', 'https://news.yahoo.co.jp/rss/topics/top-picks.xml'),
         ('財経新聞',      'https://www.zaikei.co.jp/rss/news.rdf'),
     ],
-    '経済': [  # 企業・金融・市場を意識した構成
+    '経済': [  # 経済・企業・金融・市場に特化したソースのみ
+        ('Reuters 経済',   'https://feeds.reuters.com/reuters/businessNews'),
         ('NHK経済',        'https://www3.nhk.or.jp/rss/news/cat3.xml'),
         ('東洋経済',       'https://toyokeizai.net/list/feed/rss'),
-        ('ダイヤモンドOL', 'https://diamond.jp/list/feed/rss'),
         ('日経ビジネス',   'https://business.nikkei.com/rss/sns/nb.rdf'),
-        ('Reuters 経済',   'https://feeds.reuters.com/reuters/businessNews'),
         ('財経新聞 経済',  'https://www.zaikei.co.jp/rss/economy.rdf'),
     ],
     '政治': [
@@ -76,7 +75,7 @@ def fetch_feed(source: str, url: str) -> list:
     try:
         feed = feedparser.parse(url)
         articles = []
-        for entry in feed.entries[:15]:
+        for entry in feed.entries[:8]:
             raw = entry.get('summary', entry.get('description', ''))
             summary = strip_html(raw)
             articles.append({
@@ -92,16 +91,25 @@ def fetch_feed(source: str, url: str) -> list:
         return []
 
 
+def interleave(sources_articles: list) -> list:
+    """複数ソースをラウンドロビンで混合し、特定ソースへの偏りを解消する"""
+    result = []
+    max_len = max((len(a) for a in sources_articles), default=0)
+    for i in range(max_len):
+        for src_articles in sources_articles:
+            if i < len(src_articles):
+                result.append(src_articles[i])
+    return result
+
+
 def get_all_news() -> dict:
     global _cache, _cache_ts
     if time.time() - _cache_ts < CACHE_TTL and _cache:
         return _cache
     result = {}
     for category, sources in FEEDS.items():
-        articles = []
-        for source, url in sources:
-            articles.extend(fetch_feed(source, url))
-        result[category] = articles
+        per_source = [fetch_feed(src, url) for src, url in sources]
+        result[category] = interleave(per_source)
     _cache = result
     _cache_ts = time.time()
     return result
