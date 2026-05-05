@@ -92,20 +92,30 @@ _ai_comment_cache: dict  = {}    # 記事別コメントキャッシュ（key=�
 
 
 def _call_claude(prompt: str, max_tokens: int = 300) -> str:
-    """Gemini Flash を呼び出してテキスト生成。失敗時は空文字を返す"""
+    """Gemini 2.0 Flash を呼び出してテキスト生成（google-genai 新SDK）。失敗時は空文字"""
     if not GEMINI_KEY:
+        print('[DEBUG] GEMINI_KEY 未設定 → テンプレート使用')
         return ''
     try:
-        import google.generativeai as genai
-        genai.configure(api_key=GEMINI_KEY)
-        model    = genai.GenerativeModel('gemini-1.5-flash')
-        response = model.generate_content(
-            prompt,
-            generation_config=genai.GenerationConfig(max_output_tokens=max_tokens),
+        from google import genai
+        from google.genai import types
+        client   = genai.Client(api_key=GEMINI_KEY)
+        response = client.models.generate_content(
+            model='gemini-2.0-flash',
+            contents=prompt,
+            config=types.GenerateContentConfig(
+                max_output_tokens=max_tokens,
+                temperature=0.7,
+            ),
         )
-        return response.text.strip()
+        text = (response.text or '').strip()
+        if text:
+            print(f'[DEBUG] Gemini 生成成功 ({len(text)}文字)')
+        else:
+            print('[WARN] Gemini レスポンスが空')
+        return text
     except Exception as e:
-        print(f'[WARN] Gemini API 呼び出し失敗: {e}')
+        print(f'[WARN] Gemini API 失敗: {type(e).__name__}: {e}')
         return ''
 
 
