@@ -1,0 +1,472 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>マイ朝刊 — {{ now.strftime('%Y年%m月%d日') }}（{{ weekday }}）</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <!-- さくら選定：M PLUS 1p（丸みを少し削ったゴシック） -->
+  <link href="https://fonts.googleapis.com/css2?family=M+PLUS+1p:wght@400;500;700;800;900&family=Noto+Sans+JP:wght@300;400;500;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --navy: #1a2e4a; --navy-light: #243d5e; --navy-dark: #0f1e32;
+      --red: #c0392b; --red-dark: #96281b;
+      --gold: #b8860b; --gold-pale: #fef9e7;
+      --green-deep: #2c5f3f;
+      --bg: #fafafa; --bg-warm: #f5f3ef; --sidebar-bg: #f3f1ec;
+      --sidebar-border: #e2ddd6; --text: #1c1c1c; --text-secondary: #333;
+      --muted: #666; --muted-light: #999; --border: #d8d3c8;
+      --border-light: #ece9e2; --white: #ffffff;
+      --shadow-sm: 0 1px 4px rgba(0,0,0,.07);
+      --shadow-md: 0 4px 14px rgba(0,0,0,.09);
+      /* さくら選定フォント：M PLUS 1p */
+      --font-head: 'M PLUS 1p', 'Hiragino Sans', 'Meiryo', sans-serif;
+      --font-body: 'Noto Sans JP', 'Hiragino Sans', 'Meiryo', sans-serif;
+      --transition: .22s cubic-bezier(.4,0,.2,1);
+    }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html { font-size: 16px; scroll-behavior: smooth; }
+    body { font-family: var(--font-body); background: var(--bg); color: var(--text); line-height: 1.78; letter-spacing: .02em; overflow-x: hidden; }
+    a { color: inherit; text-decoration: none; transition: color var(--transition); }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    @keyframes fadeUp { to { opacity: 1; transform: translateY(0); } }
+
+    /* ──── Masthead ──── */
+    .masthead { position: sticky; top: 0; z-index: 1000; background: var(--navy); box-shadow: 0 2px 8px rgba(0,0,0,.25); border-bottom: 3px solid var(--red); }
+    .masthead-inner { max-width: 1280px; margin: 0 auto; padding: 0 24px; }
+    .masthead-top { display: flex; align-items: center; justify-content: space-between; padding: 12px 0 10px; border-bottom: 1px solid rgba(255,255,255,.1); }
+    .masthead-logo { font-family: var(--font-head); font-size: 1.9rem; font-weight: 900; color: #fff; letter-spacing: .06em; cursor: pointer; display: flex; align-items: center; gap: 10px; }
+    .masthead-logo-sub { font-size: .58em; font-weight: 500; color: rgba(255,255,255,.5); border-left: 1px solid rgba(255,255,255,.25); padding-left: 10px; letter-spacing: .15em; }
+    .masthead-meta { text-align: right; }
+    .masthead-date { font-family: var(--font-head); font-size: .8rem; color: rgba(255,255,255,.72); }
+    .masthead-edition { font-size: .7rem; color: rgba(255,255,255,.4); letter-spacing: .1em; margin-top: 2px; }
+    .btn-refresh { background: var(--red); color: #fff; border: none; padding: 7px 18px; font-family: var(--font-head); font-size: .8rem; font-weight: 700; cursor: pointer; border-radius: 20px; transition: background var(--transition); }
+    .btn-refresh:hover { background: var(--red-dark); }
+    .section-nav { display: flex; overflow-x: auto; scrollbar-width: none; }
+    .section-nav::-webkit-scrollbar { display: none; }
+    .section-nav a { font-family: var(--font-head); font-size: .83rem; font-weight: 700; color: rgba(255,255,255,.68); padding: 10px 18px; white-space: nowrap; letter-spacing: .04em; position: relative; transition: color var(--transition), background var(--transition); }
+    .section-nav a::after { content: ''; position: absolute; bottom: 0; left: 50%; transform: translateX(-50%); width: 0; height: 3px; background: var(--red); transition: width var(--transition); border-radius: 3px 3px 0 0; }
+    .section-nav a:hover { color: #fff; background: rgba(255,255,255,.06); }
+    .section-nav a:hover::after { width: 70%; }
+
+    /* ──── Layout ──── */
+    .page-container { max-width: 1280px; margin: 0 auto; padding: 24px 24px 56px; }
+    .wrapper { display: grid; grid-template-columns: 1fr 308px; gap: 28px; align-items: start; }
+    .main-content { min-width: 0; }
+
+    /* ──── トップ見出し ──── */
+    .top-headline { background: #fff; border: 1px solid var(--border); border-top: 4px solid var(--navy); padding: 28px 30px 30px; margin-bottom: 26px; box-shadow: var(--shadow-sm); position: relative; }
+    .top-headline::before { content: '本日の注目'; position: absolute; top: 0; right: 0; background: var(--red); color: #fff; font-family: var(--font-head); font-size: .68rem; font-weight: 700; letter-spacing: .12em; padding: 4px 14px; }
+    .hl-label { font-family: var(--font-head); font-size: .72rem; font-weight: 800; color: var(--red); letter-spacing: .18em; text-transform: uppercase; margin-bottom: 10px; display: flex; align-items: center; gap: 8px; }
+    .hl-label::before { content: ''; display: inline-block; width: 18px; height: 2px; background: var(--red); }
+    .hl-title { font-family: var(--font-head); font-size: 1.75rem; font-weight: 900; line-height: 1.48; color: var(--navy-dark); margin-bottom: 12px; }
+    .hl-title a { color: inherit; transition: color var(--transition); }
+    .hl-title a:hover { color: var(--red); }
+    .hl-summary { font-size: .92rem; color: var(--text-secondary); line-height: 1.85; border-top: 1px solid var(--border-light); padding-top: 12px; }
+    .hl-footer { display: flex; align-items: center; justify-content: space-between; margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--border-light); font-size: .74rem; color: var(--muted); }
+    .sub-articles-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 16px; padding-top: 16px; border-top: 1px solid var(--border-light); }
+    .sub-article { padding: 10px 14px; background: var(--bg-warm); border-left: 3px solid var(--navy); font-family: var(--font-head); font-size: .88rem; font-weight: 700; line-height: 1.5; color: var(--navy-dark); transition: color var(--transition), border-color var(--transition); }
+    .sub-article:hover { color: var(--red); border-color: var(--red); }
+    .sub-source { display: block; font-family: var(--font-body); font-size: .67rem; color: var(--muted-light); font-weight: 400; margin-top: 3px; }
+
+    /* ──── セクション ──── */
+    .news-section { background: #fff; border: 1px solid var(--border); margin-bottom: 22px; box-shadow: var(--shadow-sm); overflow: hidden; }
+    .section-header { background: var(--navy); padding: 10px 20px; display: flex; align-items: center; gap: 8px; }
+    .section-header-title { font-family: var(--font-head); font-size: .96rem; font-weight: 800; color: #fff; letter-spacing: .05em; }
+    .section-header-sub { font-family: var(--font-head); font-size: .7rem; color: rgba(255,255,255,.5); font-weight: 500; margin-left: 4px; letter-spacing: .06em; }
+
+    /* ──── 記事 ──── */
+    .article-item { padding: 13px 20px; border-bottom: 1px solid var(--border-light); display: grid; grid-template-columns: 1fr auto; gap: 6px 12px; cursor: pointer; transition: background var(--transition); opacity: 0; transform: translateY(7px); animation: fadeUp .4s ease forwards; }
+    .article-item:last-child { border-bottom: none; }
+    .article-item:hover { background: rgba(26,46,74,.03); }
+    .article-item:nth-child(1){animation-delay:.05s}.article-item:nth-child(2){animation-delay:.10s}.article-item:nth-child(3){animation-delay:.15s}.article-item:nth-child(4){animation-delay:.20s}.article-item:nth-child(5){animation-delay:.25s}.article-item:nth-child(6){animation-delay:.30s}.article-item:nth-child(7){animation-delay:.35s}
+    .article-title { font-family: var(--font-head); font-size: .95rem; font-weight: 700; color: var(--navy-dark); line-height: 1.55; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; transition: color var(--transition); }
+    .article-item:hover .article-title { color: var(--red); }
+    .article-summary { font-size: .8rem; color: var(--muted); line-height: 1.72; margin-top: 4px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+    .article-source { font-size: .67rem; color: var(--muted-light); margin-top: 3px; }
+    .article-time { font-size: .67rem; color: var(--muted-light); white-space: nowrap; align-self: flex-start; margin-top: 2px; }
+    .no-articles { padding: 22px; font-size: .85rem; color: var(--muted); text-align: center; }
+
+    /* ──── サイドバー ──── */
+    .sidebar { position: sticky; top: 90px; display: flex; flex-direction: column; gap: 18px; }
+    .card-header { padding: 10px 16px; display: flex; align-items: center; gap: 8px; }
+    .card-header-title { font-family: var(--font-head); font-size: .88rem; font-weight: 800; color: #fff; letter-spacing: .06em; }
+
+    /* ──── きょうのことば ──── */
+    .kotoba-card { background: var(--gold-pale); border: 1px solid #e6c84a; overflow: hidden; box-shadow: var(--shadow-sm); }
+    .kotoba-card .card-header { background: var(--gold); }
+    .kotoba-body { padding: 18px 16px; }
+    .kotoba-word { font-family: var(--font-head); font-size: 1.65rem; font-weight: 900; color: var(--gold); text-align: center; letter-spacing: .1em; margin-bottom: 4px; }
+    .kotoba-reading { font-size: .72rem; color: var(--muted); text-align: center; letter-spacing: .15em; margin-bottom: 2px; }
+    .kotoba-en { font-size: .72rem; font-weight: 700; color: var(--red); text-align: center; margin-bottom: 12px; }
+    .kotoba-desc { font-size: .82rem; color: var(--text-secondary); line-height: 1.82; border-top: 1px solid #e6c84a; padding-top: 12px; }
+
+    /* ──── 社説・論点 ──── */
+    .shasetsu-card { background: var(--sidebar-bg); border: 1px solid var(--sidebar-border); overflow: hidden; box-shadow: var(--shadow-sm); }
+    .shasetsu-card .card-header { background: var(--navy-dark); }
+    .shasetsu-body { padding: 14px 16px; }
+    .shasetsu-badge { font-size: .64rem; font-weight: 800; color: var(--red); letter-spacing: .12em; margin-bottom: 6px; }
+    .shasetsu-art-title { font-family: var(--font-head); font-size: .9rem; font-weight: 800; color: var(--navy-dark); line-height: 1.55; margin-bottom: 8px; border-left: 3px solid var(--red); padding-left: 8px; }
+    .shasetsu-art-title a { color: inherit; }
+    .shasetsu-art-title:hover a { color: var(--red); }
+    .shasetsu-section { margin-top: 10px; }
+    .shasetsu-section-label { font-family: var(--font-head); font-size: .64rem; font-weight: 800; color: var(--navy); letter-spacing: .1em; margin-bottom: 4px; }
+    .shasetsu-text { font-size: .8rem; color: var(--muted); line-height: 1.78; }
+    .shasetsu-source { font-size: .67rem; color: var(--muted-light); text-align: right; margin-top: 8px; }
+
+    /* ──── 春秋コラム（悠翔設計） ──── */
+    .shunshuu-card { background: #f6faf7; border: 1px solid #b5d5be; overflow: hidden; box-shadow: var(--shadow-sm); }
+    .shunshuu-card .card-header { background: var(--green-deep); }
+    .shunshuu-body { padding: 16px; }
+    .shunshuu-opener {
+      font-family: var(--font-head);
+      font-size: .88rem;
+      line-height: 2.0;
+      color: var(--text-secondary);
+      letter-spacing: .04em;
+      margin-bottom: 10px;
+      padding-bottom: 10px;
+      border-bottom: 1px dashed #b5d5be;
+    }
+    .shunshuu-bridge {
+      font-size: .72rem;
+      color: var(--muted);
+      font-style: italic;
+      margin-bottom: 8px;
+      letter-spacing: .05em;
+    }
+    .shunshuu-art-title {
+      font-family: var(--font-head);
+      font-size: .9rem;
+      font-weight: 800;
+      color: var(--navy-dark);
+      line-height: 1.55;
+      margin-bottom: 6px;
+    }
+    .shunshuu-art-title a { color: inherit; }
+    .shunshuu-art-title:hover a { color: var(--green-deep); }
+    .shunshuu-text {
+      font-size: .8rem;
+      color: var(--muted);
+      line-height: 1.8;
+      margin-bottom: 10px;
+      display: -webkit-box;
+      -webkit-line-clamp: 3;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+    }
+    .shunshuu-closer {
+      font-family: var(--font-head);
+      font-size: .82rem;
+      color: var(--green-deep);
+      font-weight: 700;
+      line-height: 1.7;
+      padding-top: 8px;
+      border-top: 1px dashed #b5d5be;
+    }
+    .shunshuu-byline { font-size: .65rem; color: var(--muted-light); text-align: right; margin-top: 6px; }
+
+    /* ──── Footer / Scroll-top ──── */
+    .site-footer { background: var(--navy-dark); color: rgba(255,255,255,.45); padding: 28px 24px; margin-top: 40px; font-size: .75rem; text-align: center; line-height: 2; }
+    .scroll-top { position: fixed; bottom: 28px; right: 24px; width: 42px; height: 42px; background: var(--navy); color: #fff; border: none; cursor: pointer; font-size: 1.1rem; box-shadow: var(--shadow-md); opacity: 0; transform: translateY(10px); pointer-events: none; z-index: 500; border-radius: 50%; transition: background var(--transition), transform var(--transition), opacity var(--transition); }
+    .scroll-top.visible { opacity: 1; transform: translateY(0); pointer-events: auto; }
+    .scroll-top:hover { background: var(--red); transform: translateY(-2px); }
+
+    /* ──── Responsive ──── */
+    @media(max-width:860px){
+      .wrapper { grid-template-columns: 1fr; }
+      .sidebar { position: static; display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+      .kotoba-card { grid-column: 1/-1; }
+      .sub-articles-grid { grid-template-columns: 1fr; }
+      .hl-title { font-size: 1.35rem; }
+      .masthead-logo { font-size: 1.5rem; }
+      .page-container { padding: 16px 16px 40px; }
+    }
+    @media(max-width:520px){
+      .sidebar { grid-template-columns: 1fr; }
+      .masthead-meta { display: none; }
+    }
+    @media print {
+      *{animation:none!important;transition:none!important;box-shadow:none!important;}
+      .masthead{position:relative;background:#000;-webkit-print-color-adjust:exact;print-color-adjust:exact;}
+      .section-nav,.scroll-top,.btn-refresh{display:none!important;}
+      .wrapper{grid-template-columns:1fr 220px;}
+      .sidebar{position:static;}
+      .article-item{opacity:1!important;transform:none!important;page-break-inside:avoid;}
+    }
+  </style>
+</head>
+<body>
+
+<!-- マストヘッド -->
+<header class="masthead">
+  <div class="masthead-inner">
+    <div class="masthead-top">
+      <div class="masthead-logo" onclick="scrollTo(0,0)">
+        マイ朝刊<span class="masthead-logo-sub">朝刊</span>
+      </div>
+      <div class="masthead-meta">
+        <div class="masthead-date">{{ now.strftime('%Y年%m月%d日') }}（{{ weekday }}曜日）</div>
+        <div class="masthead-edition">最終更新 {{ last_updated }}</div>
+      </div>
+      <form action="/refresh" method="post" style="margin:0">
+        <button class="btn-refresh" type="submit">▼ 最新に更新</button>
+      </form>
+    </div>
+    <nav class="section-nav">
+      <a href="#top">🗞 主要</a>
+      <a href="#keizai">💹 経済・企業</a>
+      <a href="#seiji">🏛 政治</a>
+      <a href="#kokusai">🌏 国際・安保</a>
+      <a href="#it">💻 IT</a>
+      <a href="#shakai">🏙 社会</a>
+      <a href="#bunka">🎭 文化</a>
+      <a href="#kotoba">📖 ことば</a>
+    </nav>
+  </div>
+</header>
+
+<!-- メイン -->
+<div class="page-container">
+  <div class="wrapper">
+
+    <!-- 左：ニュース -->
+    <main class="main-content">
+
+      <!-- トップニュース -->
+      {% set top = news.get('主要', []) %}
+      {% if top %}
+        {% set hero = top[0] %}
+        <section id="top" class="top-headline">
+          <div class="hl-label">📌 本日のトップニュース</div>
+          <div class="hl-title"><a href="{{ hero.link }}" target="_blank" rel="noopener">{{ hero.title }}</a></div>
+          {% if hero.summary %}<div class="hl-summary">{{ hero.summary }}</div>{% endif %}
+          <div class="hl-footer">
+            <span>── {{ hero.source }}</span>
+            <span>{{ hero.published[:16] if hero.published else '' }}</span>
+          </div>
+          {% if top|length > 1 %}
+            <div class="sub-articles-grid">
+              {% for art in top[1:5] %}
+                <div class="sub-article">
+                  <a href="{{ art.link }}" target="_blank" rel="noopener">{{ art.title }}</a>
+                  <span class="sub-source">{{ art.source }}</span>
+                </div>
+              {% endfor %}
+            </div>
+          {% endif %}
+        </section>
+      {% endif %}
+
+      <!-- 経済 / 企業・金融 -->
+      {% set arts = news.get('経済', []) %}
+      <section id="keizai" class="news-section">
+        <div class="section-header">
+          <span>💹</span>
+          <h2 class="section-header-title">経済</h2>
+          <span class="section-header-sub">企業・金融・市場</span>
+        </div>
+        {% if arts %}
+          {% for art in arts[:7] %}
+            <div class="article-item" onclick="window.open('{{ art.link }}','_blank')">
+              <div>
+                <div class="article-title">{{ art.title }}</div>
+                {% if art.summary %}<div class="article-summary">{{ art.summary }}</div>{% endif %}
+                <div class="article-source">{{ art.source }}</div>
+              </div>
+              <div class="article-time">{{ art.published[:16] if art.published else '' }}</div>
+            </div>
+          {% endfor %}
+        {% else %}
+          <div class="no-articles">記事を取得中です…</div>
+        {% endif %}
+      </section>
+
+      <!-- 政治 -->
+      {% set arts = news.get('政治', []) %}
+      <section id="seiji" class="news-section">
+        <div class="section-header"><span>🏛</span><h2 class="section-header-title">政治</h2></div>
+        {% if arts %}
+          {% for art in arts[:7] %}
+            <div class="article-item" onclick="window.open('{{ art.link }}','_blank')">
+              <div>
+                <div class="article-title">{{ art.title }}</div>
+                {% if art.summary %}<div class="article-summary">{{ art.summary }}</div>{% endif %}
+                <div class="article-source">{{ art.source }}</div>
+              </div>
+              <div class="article-time">{{ art.published[:16] if art.published else '' }}</div>
+            </div>
+          {% endfor %}
+        {% else %}
+          <div class="no-articles">記事を取得中です…</div>
+        {% endif %}
+      </section>
+
+      <!-- 国際 / 安全保障・地政学 -->
+      {% set arts = news.get('国際', []) %}
+      <section id="kokusai" class="news-section">
+        <div class="section-header">
+          <span>🌏</span>
+          <h2 class="section-header-title">国際</h2>
+          <span class="section-header-sub">安全保障・地政学</span>
+        </div>
+        {% if arts %}
+          {% for art in arts[:7] %}
+            <div class="article-item" onclick="window.open('{{ art.link }}','_blank')">
+              <div>
+                <div class="article-title">{{ art.title }}</div>
+                {% if art.summary %}<div class="article-summary">{{ art.summary }}</div>{% endif %}
+                <div class="article-source">{{ art.source }}</div>
+              </div>
+              <div class="article-time">{{ art.published[:16] if art.published else '' }}</div>
+            </div>
+          {% endfor %}
+        {% else %}
+          <div class="no-articles">記事を取得中です…</div>
+        {% endif %}
+      </section>
+
+      <!-- IT・テック -->
+      {% set arts = news.get('IT・テック', []) %}
+      <section id="it" class="news-section">
+        <div class="section-header"><span>💻</span><h2 class="section-header-title">IT・テック</h2></div>
+        {% if arts %}
+          {% for art in arts[:7] %}
+            <div class="article-item" onclick="window.open('{{ art.link }}','_blank')">
+              <div>
+                <div class="article-title">{{ art.title }}</div>
+                {% if art.summary %}<div class="article-summary">{{ art.summary }}</div>{% endif %}
+                <div class="article-source">{{ art.source }}</div>
+              </div>
+              <div class="article-time">{{ art.published[:16] if art.published else '' }}</div>
+            </div>
+          {% endfor %}
+        {% else %}
+          <div class="no-articles">記事を取得中です…</div>
+        {% endif %}
+      </section>
+
+      <!-- 国内・社会 -->
+      {% set arts = news.get('国内・社会', []) %}
+      <section id="shakai" class="news-section">
+        <div class="section-header"><span>🏙</span><h2 class="section-header-title">国内・社会</h2></div>
+        {% if arts %}
+          {% for art in arts[:7] %}
+            <div class="article-item" onclick="window.open('{{ art.link }}','_blank')">
+              <div>
+                <div class="article-title">{{ art.title }}</div>
+                {% if art.summary %}<div class="article-summary">{{ art.summary }}</div>{% endif %}
+                <div class="article-source">{{ art.source }}</div>
+              </div>
+              <div class="article-time">{{ art.published[:16] if art.published else '' }}</div>
+            </div>
+          {% endfor %}
+        {% else %}
+          <div class="no-articles">記事を取得中です…</div>
+        {% endif %}
+      </section>
+
+      <!-- 文化・科学 -->
+      {% set arts = news.get('文化・科学', []) %}
+      <section id="bunka" class="news-section">
+        <div class="section-header"><span>🎭</span><h2 class="section-header-title">文化・科学</h2></div>
+        {% if arts %}
+          {% for art in arts[:6] %}
+            <div class="article-item" onclick="window.open('{{ art.link }}','_blank')">
+              <div>
+                <div class="article-title">{{ art.title }}</div>
+                {% if art.summary %}<div class="article-summary">{{ art.summary }}</div>{% endif %}
+                <div class="article-source">{{ art.source }}</div>
+              </div>
+              <div class="article-time">{{ art.published[:16] if art.published else '' }}</div>
+            </div>
+          {% endfor %}
+        {% else %}
+          <div class="no-articles">記事を取得中です…</div>
+        {% endif %}
+      </section>
+
+    </main>
+
+    <!-- 右：サイドバー -->
+    <aside class="sidebar">
+
+      <!-- きょうのことば -->
+      <div id="kotoba" class="kotoba-card">
+        <div class="card-header"><span>📖</span><span class="card-header-title">きょうのことば</span></div>
+        <div class="kotoba-body">
+          <div class="kotoba-word">{{ kotoba.word }}</div>
+          <div class="kotoba-reading">【{{ kotoba.reading }}】</div>
+          <div class="kotoba-en">{{ kotoba.en }}</div>
+          <div class="kotoba-desc">{{ kotoba.desc }}</div>
+        </div>
+      </div>
+
+      <!-- 社説・論点 -->
+      {% set s_pool = news.get('政治', []) + news.get('経済', []) %}
+      {% if s_pool %}
+        {% set s = s_pool[0] %}
+        <div class="shasetsu-card">
+          <div class="card-header"><span>✒️</span><span class="card-header-title">社説・論点</span></div>
+          <div class="shasetsu-body">
+            <div class="shasetsu-badge">◆ 本日注目の論点</div>
+            <div class="shasetsu-art-title"><a href="{{ s.link }}" target="_blank" rel="noopener">{{ s.title }}</a></div>
+            {% if s.summary %}
+              <div class="shasetsu-section">
+                <div class="shasetsu-section-label">◆ 論点</div>
+                <div class="shasetsu-text">{{ s.summary[:100] }}</div>
+              </div>
+            {% endif %}
+            <div class="shasetsu-section">
+              <div class="shasetsu-section-label">◆ 今後の注目点</div>
+              <div class="shasetsu-text">この問題が今後の政策・市場に与える影響を引き続き注視したい。</div>
+            </div>
+            <div class="shasetsu-source">── {{ s.source }}</div>
+          </div>
+        </div>
+      {% endif %}
+
+      <!-- 春秋コラム（悠翔設計） -->
+      {% if shunshuu.article %}
+        <div class="shunshuu-card">
+          <div class="card-header"><span>🌿</span><span class="card-header-title">春秋</span></div>
+          <div class="shunshuu-body">
+            <p class="shunshuu-opener">{{ shunshuu.opener }}</p>
+            <p class="shunshuu-bridge">——今日のニュースから一つ。</p>
+            <div class="shunshuu-art-title">
+              <a href="{{ shunshuu.article.link }}" target="_blank" rel="noopener">{{ shunshuu.article.title }}</a>
+            </div>
+            {% if shunshuu.article.summary %}
+              <p class="shunshuu-text">{{ shunshuu.article.summary[:130] }}</p>
+            {% endif %}
+            <p class="shunshuu-closer">{{ shunshuu.closer }}</p>
+            <div class="shunshuu-byline">── {{ shunshuu.article.source }}</div>
+          </div>
+        </div>
+      {% endif %}
+
+    </aside>
+  </div>
+</div>
+
+<!-- フッター -->
+<footer class="site-footer">
+  <div>マイ朝刊 — NHK・毎日新聞・Reuters・NYT・BBC・東洋経済 等の公開RSSを集約</div>
+  <div>各記事の著作権は配信元に帰属します。ニュースは30分ごとキャッシュ。</div>
+</footer>
+<button class="scroll-top" id="scroll-top-btn" onclick="scrollTo({top:0,behavior:'smooth'})">↑</button>
+
+<script>
+  document.querySelectorAll('.section-nav a').forEach(a => {
+    a.addEventListener('click', e => {
+      const el = document.getElementById(a.getAttribute('href').slice(1));
+      if (el) { e.preventDefault(); el.scrollIntoView({behavior:'smooth',block:'start'}); }
+    });
+  });
+  window.addEventListener('scroll', () => {
+    document.getElementById('scroll-top-btn').classList.toggle('visible', scrollY > 400);
+  });
+</script>
+</body>
+</html>
