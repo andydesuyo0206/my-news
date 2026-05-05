@@ -6,7 +6,7 @@ import feedparser
 import re
 import time
 import os
-from datetime import datetime
+from datetime import datetime, timezone
 from zoneinfo import ZoneInfo
 from flask import Flask, render_template, redirect
 
@@ -82,6 +82,42 @@ def strip_html(text: str) -> str:
     return re.sub(r'<[^>]+>', '', text or '').replace('&nbsp;', ' ').replace('&amp;', '&').replace('&lt;', '<').replace('&gt;', '>').strip()
 
 
+def get_entry_image(entry) -> str:
+    """feedparserエントリから画像URLを取り出す（複数フォーマット対応）"""
+    # media:content / media:thumbnail
+    for key in ('media_content', 'media_thumbnail'):
+        items = entry.get(key, [])
+        if items:
+            url = items[0].get('url', '')
+            if url:
+                return url
+    # enclosures（ポッドキャスト等）
+    for enc in entry.get('enclosures', []):
+        if enc.get('type', '').startswith('image/'):
+            url = enc.get('url', '')
+            if url:
+                return url
+    # summary/description 内の <img src="...">
+    raw = entry.get('summary', entry.get('description', ''))
+    if raw:
+        m = re.search(r'<img[^>]+src=["\']([^"\']+)["\']', raw, re.I)
+        if m:
+            return m.group(1)
+    return ''
+
+
+def fmt_published(entry) -> str:
+    """feedparserエントリの公開日時を JST の 'YYYY/MM/DD Tue HH:MM' 形式で返す"""
+    pub = entry.get('published_parsed')
+    if pub:
+        try:
+            dt = datetime(*pub[:6], tzinfo=timezone.utc).astimezone(JST)
+            return dt.strftime('%Y/%m/%d %a %H:%M')
+        except Exception:
+            pass
+    return entry.get('published', '')
+
+
 def fetch_feed(source: str, url: str) -> list:
     try:
         feed = feedparser.parse(url)
@@ -90,11 +126,12 @@ def fetch_feed(source: str, url: str) -> list:
             raw = entry.get('summary', entry.get('description', ''))
             summary = strip_html(raw)
             articles.append({
-                'title': entry.get('title', '（タイトルなし）'),
-                'link': entry.get('link', '#'),
-                'summary': summary[:220] + '…' if len(summary) > 220 else summary,
-                'published': entry.get('published', ''),
-                'source': source,
+                'title':     entry.get('title', '（タイトルなし）'),
+                'link':      entry.get('link', '#'),
+                'summary':   summary[:220] + '…' if len(summary) > 220 else summary,
+                'published': fmt_published(entry),
+                'source':    source,
+                'image':     get_entry_image(entry),
             })
         return articles
     except Exception as e:
@@ -311,6 +348,95 @@ def get_shunshuu(news: dict) -> dict:
     return {'opener': opener, 'closer': closer, 'article': article}
 
 
+# ─── 今日は何の日（MMDD → 説明文） ──────────────────────────────
+
+TODAY_SPECIAL: dict[str, str] = {
+    '0101': '元旦 ─ 新年の始まり',
+    '0103': '1868年：王政復古の大号令（明治維新）',
+    '0107': '人日の節句（七草がゆの日）',
+    '0115': '1995年：阪神・淡路大震災',
+    '0120': '大寒（寒さが最も厳しい時季）',
+    '0127': '1945年：アウシュビッツ強制収容所解放',
+    '0128': '1986年：スペースシャトル「チャレンジャー」爆発事故',
+    '0203': '節分（立春の前日）',
+    '0204': '立春（暦の上で春の始まり）',
+    '0211': '建国記念の日 ─ 日本の祝日',
+    '0214': 'バレンタインデー',
+    '0222': '猫の日（2・22・にゃんにゃんにゃん）',
+    '0223': '天皇誕生日（令和）─ 日本の祝日',
+    '0301': '1954年：第五福竜丸がビキニ環礁で被爆',
+    '0308': '国際女性デー',
+    '0311': '2011年：東日本大震災',
+    '0314': 'ホワイトデー / 1883年：カール・マルクス逝去',
+    '0320': '春分の日 ─ 日本の祝日',
+    '0321': '春分の日（年によって異なる）',
+    '0329': '1951年：サンフランシスコ講和条約調印',
+    '0401': 'エイプリルフール / 新年度スタート',
+    '0408': '灌仏会（お釈迦様の誕生日）',
+    '0415': '1912年：タイタニック号沈没',
+    '0423': '世界本の日・サン・ジョルディの日',
+    '0429': '昭和の日 ─ 日本の祝日',
+    '0430': '2019年：今上天皇陛下御即位（令和元年）',
+    '0501': '2019年：令和改元',
+    '0503': '憲法記念日 ─ 日本の祝日',
+    '0504': 'みどりの日 ─ 日本の祝日',
+    '0505': 'こどもの日 ─ 日本の祝日',
+    '0508': '世界赤十字デー',
+    '0509': '1945年：欧州戦線終結（第二次世界大戦）',
+    '0510': '1869年：米国大陸横断鉄道開通',
+    '0515': '1972年：沖縄、本土復帰',
+    '0524': '1844年：モールス信号で世界初の電信送信',
+    '0529': '1953年：エベレスト初登頂（ヒラリー、テンジン）',
+    '0604': '1989年：天安門事件',
+    '0610': '時の記念日',
+    '0614': '世界献血者デー',
+    '0620': '夏至前後 ─ 一年で最も昼が長い時季',
+    '0621': '夏至（年によって異なる）',
+    '0623': '1945年：沖縄戦終結・慰霊の日',
+    '0626': '国際麻薬乱用撲滅デー',
+    '0701': '1997年：香港、中国に返還',
+    '0704': '米国独立記念日',
+    '0707': '七夕',
+    '0720': '1969年：アポロ11号、月面着陸',
+    '0728': '1914年：第一次世界大戦開戦',
+    '0806': '1945年：広島に原子爆弾投下',
+    '0809': '1945年：長崎に原子爆弾投下',
+    '0811': '山の日 ─ 日本の祝日',
+    '0815': '1945年：終戦記念日',
+    '0828': '1963年：キング牧師「I Have a Dream」演説',
+    '0901': '1923年：関東大震災 / 防災の日',
+    '0902': '1945年：日本降伏文書調印（第二次世界大戦終結）',
+    '0909': '救急の日（救急医療の普及・啓発）',
+    '0911': '2001年：米国同時多発テロ',
+    '0922': '秋分の日（年によって異なる）',
+    '0923': '秋分の日 ─ 日本の祝日',
+    '1001': '1949年：中華人民共和国成立',
+    '1010': '1964年：東京オリンピック開幕',
+    '1024': '国際連合デー（国連創設記念日）',
+    '1031': 'ハロウィン',
+    '1101': '犬の日（ワンワンワン）',
+    '1103': '文化の日 ─ 日本の祝日',
+    '1109': '1989年：ベルリンの壁崩壊',
+    '1111': '1918年：第一次世界大戦終結',
+    '1115': '七五三',
+    '1123': '勤労感謝の日 ─ 日本の祝日',
+    '1125': '1867年：坂本龍馬暗殺',
+    '1201': '1955年：ローザ・パークスがバス乗車拒否で逮捕',
+    '1207': '1941年：真珠湾攻撃（大東亜戦争開戦）',
+    '1210': '世界人権デー',
+    '1217': '1903年：ライト兄弟、動力飛行に初成功',
+    '1221': '冬至（年によって異なる）',
+    '1225': 'クリスマス',
+    '1231': '大晦日',
+}
+
+
+def get_today_special() -> str:
+    """今日の日付（MMDD）に対応するイベント文字列を返す"""
+    key = datetime.now(JST).strftime('%m%d')
+    return TODAY_SPECIAL.get(key, '')
+
+
 # ─── 共通ユーティリティ ──────────────────────────────────────────
 
 WEEKDAY_JP = ['月', '火', '水', '木', '金', '土', '日']
@@ -335,6 +461,7 @@ def index():
         now=now,
         weekday=WEEKDAY_JP[now.weekday()],
         last_updated=datetime.fromtimestamp(_cache_ts, JST).strftime('%H:%M') if _cache_ts else '—',
+        today_event=get_today_special(),
     )
 
 

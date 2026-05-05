@@ -58,6 +58,7 @@
     .mh-left { display: flex; flex-direction: column; gap: 2px; }
     .mh-date { font-family: var(--font-h); font-size: .74rem; color: rgba(255,255,255,.55); letter-spacing: .04em; }
     .mh-edition { font-size: .6rem; color: rgba(255,255,255,.28); letter-spacing: .06em; margin-top: 1px; }
+    .mh-today { font-size: .6rem; color: rgba(255,255,255,.5); letter-spacing: .03em; margin-top: 3px; }
     .mh-logo {
       font-family: var(--font-h); font-size: 1.85rem; font-weight: 900;
       color: #fff; text-align: center; cursor: pointer; letter-spacing: .18em;
@@ -137,7 +138,7 @@
     /* ══ 記事アイテム ══════════════════════════════════════════ */
     .art {
       padding: 12px 20px; border-bottom: 1px solid var(--border-lt);
-      display: grid; grid-template-columns: 1fr auto; gap: 4px 12px;
+      display: flex; gap: 12px; align-items: flex-start;
       cursor: pointer; transition: background var(--tr);
       animation: fadeUp .35s ease both;
     }
@@ -147,6 +148,11 @@
     .art:nth-child(3){animation-delay:.12s}.art:nth-child(4){animation-delay:.16s}
     .art:nth-child(5){animation-delay:.20s}.art:nth-child(6){animation-delay:.24s}
     .art:nth-child(7){animation-delay:.28s}
+    .art-body { flex: 1; min-width: 0; }
+    .art-thumb {
+      width: 82px; height: 60px; object-fit: cover;
+      border-radius: 5px; flex-shrink: 0; background: var(--bg);
+    }
     .art-title {
       font-family: var(--font-h); font-size: .92rem; font-weight: 700;
       color: var(--navy-dark); line-height: 1.55;
@@ -158,12 +164,12 @@
       font-size: .77rem; color: var(--muted); line-height: 1.72; margin-top: 3px;
       display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
     }
-    .art-meta { display: flex; align-items: center; gap: 6px; margin-top: 4px; }
+    .art-meta { display: flex; align-items: center; gap: 6px; margin-top: 4px; flex-wrap: wrap; }
     .art-src {
       font-size: .62rem; color: var(--muted-lt);
       background: #f3f4f6; border-radius: 3px; padding: 1px 6px;
     }
-    .art-time { font-size: .64rem; color: var(--muted-lt); white-space: nowrap; align-self: flex-start; margin-top: 2px; }
+    .art-time { font-size: .62rem; color: var(--muted-lt); white-space: nowrap; }
     .no-art { padding: 24px; font-size: .84rem; color: var(--muted); text-align: center; }
 
     /* ══ サイドバー共通 ════════════════════════════════════════ */
@@ -269,6 +275,7 @@
       <div class="mh-left">
         <div class="mh-date">{{ now.strftime('%Y年%m月%d日') }}（{{ weekday }}曜日）</div>
         <div class="mh-edition">最終更新 {{ last_updated }}</div>
+        {% if today_event %}<div class="mh-today">🗓 {{ today_event }}</div>{% endif %}
       </div>
       <div class="mh-logo" onclick="scrollTo(0,0)">
         朝凪
@@ -310,7 +317,7 @@
           {% if hero.summary %}<div class="hero-summary">{{ hero.summary }}</div>{% endif %}
           <div class="hero-foot">
             <span>── {{ hero.source }}</span>
-            <span>{{ hero.published[:16] if hero.published else '' }}</span>
+            <span>{{ hero.published }}</span>
           </div>
           {% if top|length > 1 %}
             <div class="sub-grid">
@@ -331,12 +338,15 @@
         <div class="ns-hd"><span>💹</span><h2 class="ns-hd-title">経済</h2></div>
         {% if arts %}{% for art in arts[:7] %}
           <div class="art" onclick="window.open('{{ art.link }}','_blank')">
-            <div>
+            <div class="art-body">
               <div class="art-title">{{ art.title }}</div>
               {% if art.summary %}<div class="art-summary">{{ art.summary }}</div>{% endif %}
-              <div class="art-meta"><span class="art-src">{{ art.source }}</span></div>
+              <div class="art-meta">
+                <span class="art-src">{{ art.source }}</span>
+                {% if art.published %}<span class="art-time">{{ art.published }}</span>{% endif %}
+              </div>
             </div>
-            <div class="art-time">{{ art.published[:16] if art.published else '' }}</div>
+            {% if art.image %}<img class="art-thumb" src="{{ art.image }}" alt="" loading="lazy" onerror="this.style.display='none'">{% endif %}
           </div>
         {% endfor %}{% else %}<div class="no-art">記事を取得中です…</div>{% endif %}
       </section>
@@ -347,12 +357,15 @@
         <div class="ns-hd"><span>🏛</span><h2 class="ns-hd-title">政治</h2></div>
         {% if arts %}{% for art in arts[:7] %}
           <div class="art" onclick="window.open('{{ art.link }}','_blank')">
-            <div>
+            <div class="art-body">
               <div class="art-title">{{ art.title }}</div>
               {% if art.summary %}<div class="art-summary">{{ art.summary }}</div>{% endif %}
-              <div class="art-meta"><span class="art-src">{{ art.source }}</span></div>
+              <div class="art-meta">
+                <span class="art-src">{{ art.source }}</span>
+                {% if art.published %}<span class="art-time">{{ art.published }}</span>{% endif %}
+              </div>
             </div>
-            <div class="art-time">{{ art.published[:16] if art.published else '' }}</div>
+            {% if art.image %}<img class="art-thumb" src="{{ art.image }}" alt="" loading="lazy" onerror="this.style.display='none'">{% endif %}
           </div>
         {% endfor %}{% else %}<div class="no-art">記事を取得中です…</div>{% endif %}
       </section>
@@ -363,12 +376,15 @@
         <div class="ns-hd"><span>🌏</span><h2 class="ns-hd-title">国際</h2></div>
         {% if arts %}{% for art in arts[:7] %}
           <div class="art" onclick="window.open('{{ art.link }}','_blank')">
-            <div>
+            <div class="art-body">
               <div class="art-title">{{ art.title }}</div>
               {% if art.summary %}<div class="art-summary">{{ art.summary }}</div>{% endif %}
-              <div class="art-meta"><span class="art-src">{{ art.source }}</span></div>
+              <div class="art-meta">
+                <span class="art-src">{{ art.source }}</span>
+                {% if art.published %}<span class="art-time">{{ art.published }}</span>{% endif %}
+              </div>
             </div>
-            <div class="art-time">{{ art.published[:16] if art.published else '' }}</div>
+            {% if art.image %}<img class="art-thumb" src="{{ art.image }}" alt="" loading="lazy" onerror="this.style.display='none'">{% endif %}
           </div>
         {% endfor %}{% else %}<div class="no-art">記事を取得中です…</div>{% endif %}
       </section>
@@ -379,12 +395,15 @@
         <div class="ns-hd"><span>💻</span><h2 class="ns-hd-title">IT・テック</h2></div>
         {% if arts %}{% for art in arts[:7] %}
           <div class="art" onclick="window.open('{{ art.link }}','_blank')">
-            <div>
+            <div class="art-body">
               <div class="art-title">{{ art.title }}</div>
               {% if art.summary %}<div class="art-summary">{{ art.summary }}</div>{% endif %}
-              <div class="art-meta"><span class="art-src">{{ art.source }}</span></div>
+              <div class="art-meta">
+                <span class="art-src">{{ art.source }}</span>
+                {% if art.published %}<span class="art-time">{{ art.published }}</span>{% endif %}
+              </div>
             </div>
-            <div class="art-time">{{ art.published[:16] if art.published else '' }}</div>
+            {% if art.image %}<img class="art-thumb" src="{{ art.image }}" alt="" loading="lazy" onerror="this.style.display='none'">{% endif %}
           </div>
         {% endfor %}{% else %}<div class="no-art">記事を取得中です…</div>{% endif %}
       </section>
@@ -395,12 +414,15 @@
         <div class="ns-hd"><span>🏙</span><h2 class="ns-hd-title">国内・社会</h2></div>
         {% if arts %}{% for art in arts[:7] %}
           <div class="art" onclick="window.open('{{ art.link }}','_blank')">
-            <div>
+            <div class="art-body">
               <div class="art-title">{{ art.title }}</div>
               {% if art.summary %}<div class="art-summary">{{ art.summary }}</div>{% endif %}
-              <div class="art-meta"><span class="art-src">{{ art.source }}</span></div>
+              <div class="art-meta">
+                <span class="art-src">{{ art.source }}</span>
+                {% if art.published %}<span class="art-time">{{ art.published }}</span>{% endif %}
+              </div>
             </div>
-            <div class="art-time">{{ art.published[:16] if art.published else '' }}</div>
+            {% if art.image %}<img class="art-thumb" src="{{ art.image }}" alt="" loading="lazy" onerror="this.style.display='none'">{% endif %}
           </div>
         {% endfor %}{% else %}<div class="no-art">記事を取得中です…</div>{% endif %}
       </section>
@@ -411,12 +433,15 @@
         <div class="ns-hd"><span>🎭</span><h2 class="ns-hd-title">文化・科学</h2></div>
         {% if arts %}{% for art in arts[:6] %}
           <div class="art" onclick="window.open('{{ art.link }}','_blank')">
-            <div>
+            <div class="art-body">
               <div class="art-title">{{ art.title }}</div>
               {% if art.summary %}<div class="art-summary">{{ art.summary }}</div>{% endif %}
-              <div class="art-meta"><span class="art-src">{{ art.source }}</span></div>
+              <div class="art-meta">
+                <span class="art-src">{{ art.source }}</span>
+                {% if art.published %}<span class="art-time">{{ art.published }}</span>{% endif %}
+              </div>
             </div>
-            <div class="art-time">{{ art.published[:16] if art.published else '' }}</div>
+            {% if art.image %}<img class="art-thumb" src="{{ art.image }}" alt="" loading="lazy" onerror="this.style.display='none'">{% endif %}
           </div>
         {% endfor %}{% else %}<div class="no-art">記事を取得中です…</div>{% endif %}
       </section>
@@ -498,7 +523,7 @@
   <div>朝凪（あさなぎ）— 朝日・毎日・Reuters・NYT・BBC・東洋経済 等の公開RSSを集約</div>
   <div>各記事の著作権は配信元に帰属します。ニュースは30分ごとキャッシュ。</div>
 </footer>
-<button class="scroll-top" id="scroll-top-btn" onclick="scrollTo({top:0,behavior:'smooth'})">↑</button>
+<button class="scroll-top" id="scroll-top-btn" aria-label="ページトップへ戻る">↑</button>
 
 <script>
   /* ── ナビ平滑スクロール ── */
@@ -510,9 +535,13 @@
   });
 
   /* ── スクロールトップボタン ── */
+  const scrollTopBtn = document.getElementById('scroll-top-btn');
   window.addEventListener('scroll', () => {
-    document.getElementById('scroll-top-btn').classList.toggle('visible', scrollY > 400);
+    scrollTopBtn.classList.toggle('visible', scrollY > 400);
   }, { passive: true });
+  scrollTopBtn.addEventListener('click', () => {
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  });
 
   /* ── プログレッシブスティッキーサイドバー ──────────────────────
      サイドバーが画面より長い場合、ページスクロールに連動して
