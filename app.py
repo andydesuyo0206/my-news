@@ -82,13 +82,17 @@ CACHE_TTL = 1800  # 30分
 
 # ─── Pixabay API（画像フォールバック。Render環境変数 PIXABAY_API_KEY を設定） ──
 PIXABAY_KEY = os.environ.get('PIXABAY_API_KEY', '')
-_pixabay_cache: dict = {}
+_pixabay_cache:  dict = {}
+_kotoba_wiki_ok: dict = {}  # wiki_title → True/False（Wikipedia 存在確認キャッシュ）
 
 # ─── Gemini API（概観・コメント生成。Render環境変数 GEMINI_API_KEY を設定） ──
-GEMINI_KEY     = os.environ.get('GEMINI_API_KEY', '')
-_ai_cache:         dict  = {}    # 概観テキストキャッシュ
+GEMINI_KEY       = os.environ.get('GEMINI_API_KEY', '')
+_ai_cache:         dict  = {}    # (旧) 概観テキストキャッシュ ※後方互換のため残置
 _ai_cache_ts:      float = 0.0
-_ai_comment_cache: dict  = {}    # 記事別コメントキャッシュ（key=記事URL）
+_ai_comment_cache: dict  = {}    # (旧) 記事別コメントキャッシュ ※後方互換のため残置
+_ai_batch_cache:   dict  = {}    # 全AIコンテンツ統合キャッシュ（overview+shasetsu+picks）
+_ai_batch_ts:      float = 0.0
+AI_CACHE_TTL             = 7200  # 2時間（Gemini 無料枠 1500 RPD 節約のため）
 
 
 def _call_claude(prompt: str, max_tokens: int = 300) -> str:
@@ -964,10 +968,12 @@ TODAY_SPECIAL_WIKI: dict[str, str] = {
     '0126': 'オーストラリアの日',
     '0127': 'ホロコースト',
     '0128': 'スペースシャトル・チャレンジャー号爆発事故',
+    '0130': 'アドルフ・ヒトラー',
     '0131': 'エクスプローラー1号',
     '0202': 'Facebook',
     '0203': '節分',
     '0204': '立春',
+    '0205': '天然痘',
     '0206': 'ワイタンギ条約',
     '0207': 'マーストリヒト条約',
     '0208': '日露戦争',
@@ -981,33 +987,54 @@ TODAY_SPECIAL_WIKI: dict[str, str] = {
     '0221': '共産党宣言',
     '0222': '猫の日',
     '0223': '天皇誕生日',
+    '0224': 'エドワード・ジェンナー',
+    '0225': 'スターリン批判',
     '0226': '二・二六事件',
     '0228': 'デオキシリボ核酸',
+    '0301': '第五福竜丸',
     '0303': '雛祭り',
+    '0305': '鉄のカーテン',
+    '0306': 'ミケランジェロ',
     '0307': '電話',
     '0308': '国際女性デー',
+    '0309': '東京大空襲',
     '0311': '東日本大震災',
+    '0313': '天王星',
     '0314': '円周率',
+    '0316': 'フェルディナンド・マゼラン',
+    '0317': '聖パトリックの祝日',
     '0318': '宇宙遊泳',
     '0320': '春分の日',
     '0321': 'ヨハン・ゼバスティアン・バッハ',
     '0325': 'ローマ条約',
+    '0326': 'ルートヴィヒ・ヴァン・ベートーヴェン',
     '0328': 'スリーマイル島原子力発電所事故',
     '0329': 'サンフランシスコ平和条約',
+    '0330': 'アラスカ',
     '0331': 'エッフェル塔',
     '0401': 'エイプリルフール',
     '0402': '携帯電話',
+    '0404': 'マーティン・ルーサー・キング・ジュニア',
     '0406': '近代オリンピック',
     '0407': '世界保健機関',
     '0408': '花祭り',
+    '0410': 'タイタニック',
+    '0411': 'ナポレオン1世',
     '0412': 'ユーリ・ガガーリン',
+    '0413': 'トーマス・ジェファーソン',
     '0414': 'エイブラハム・リンカーン',
     '0415': 'タイタニック',
+    '0416': 'ウラジーミル・レーニン',
+    '0417': '日清戦争',
+    '0418': 'サンフランシスコ地震',
+    '0420': 'コロンバイン高校銃乱射事件',
+    '0421': 'エリザベス2世',
     '0422': 'アースデー',
     '0423': 'ウィリアム・シェイクスピア',
     '0424': 'ハッブル宇宙望遠鏡',
     '0425': 'デオキシリボ核酸',
     '0426': 'チェルノブイリ原子力発電所事故',
+    '0427': 'サミュエル・モールス',
     '0429': '昭和の日',
     '0501': 'メーデー',
     '0503': '日本国憲法',
@@ -1038,31 +1065,51 @@ TODAY_SPECIAL_WIKI: dict[str, str] = {
     '0529': 'エベレスト',
     '0530': 'ジャンヌ・ダルク',
     '0531': 'ビッグ・ベン',
+    '0602': 'グリエルモ・マルコーニ',
+    '0603': '川端康成',
     '0604': '天安門事件',
     '0605': '世界環境デー',
     '0606': 'ノルマンディー上陸作戦',
     '0607': 'アラン・チューリング',
     '0610': '時の記念日',
+    '0614': 'チェ・ゲバラ',
     '0615': 'マグナ・カルタ',
     '0616': 'ワレンチナ・テレシコワ',
+    '0618': 'ワーテルローの戦い',
     '0619': 'ジューンティーンス',
     '0621': '夏至',
     '0623': '沖縄慰霊の日',
+    '0624': 'ベルリン封鎖',
     '0625': '朝鮮戦争',
     '0626': '国際連合憲章',
     '0627': 'ヘレン・ケラー',
     '0628': 'サラエボ事件',
     '0629': 'iPhone',
+    '0630': 'アポロ計画',
     '0701': '香港返還',
+    '0702': 'アメリア・イアハート',
+    '0703': 'ゲティスバーグの戦い',
     '0704': '独立記念日 (アメリカ合衆国)',
+    '0705': 'エルヴィス・プレスリー',
+    '0706': 'ヤン・フス',
     '0707': '七夕',
+    '0708': '安倍晋三銃撃事件',
+    '0710': 'マルセル・プルースト',
     '0714': 'フランス革命',
     '0716': 'トリニティ実験',
+    '0717': 'ポツダム会談',
+    '0718': 'スペイン内戦',
+    '0719': '司馬遼太郎',
     '0720': 'アポロ11号',
+    '0722': '黒澤明',
     '0725': '試験管ベビー',
     '0727': '朝鮮戦争',
     '0728': '第一次世界大戦',
+    '0731': 'J・K・ローリング',
+    '0801': '第一次世界大戦',
+    '0802': 'クウェート侵攻',
     '0803': 'クリストファー・コロンブス',
+    '0805': 'マリリン・モンロー',
     '0806': '広島市への原子爆弾投下',
     '0807': '立秋',
     '0809': '長崎市への原子爆弾投下',
@@ -1070,54 +1117,88 @@ TODAY_SPECIAL_WIKI: dict[str, str] = {
     '0812': '日本航空123便墜落事故',
     '0813': 'お盆',
     '0815': '玉音放送',
+    '0816': 'エルヴィス・プレスリー',
+    '0817': 'インドネシア独立宣言',
+    '0820': 'ウラジーミル・レーニン',
     '0822': '赤十字国際委員会',
+    '0825': 'ボイジャー2号',
     '0826': 'フランス人権宣言',
     '0828': 'マーティン・ルーサー・キング・ジュニア',
+    '0830': '菊池寛',
+    '0831': 'ダイアナ (プリンセス・オブ・ウェールズ)',
     '0901': '関東大震災',
+    '0902': '降伏文書',
     '0903': 'ドラえもん',
     '0905': 'マザー・テレサ',
+    '0906': 'メイフラワー号',
+    '0907': 'エリザベス1世',
+    '0908': 'スタートレック',
     '0909': '救急の日',
     '0911': 'アメリカ同時多発テロ事件',
+    '0913': '伊藤博文',
     '0916': '東京地下鉄',
     '0917': 'アメリカ合衆国憲法',
     '0918': '満州事変',
+    '0920': 'フェルディナンド・マゼラン',
     '0922': '秋分の日',
     '0928': '孔子',
+    '0929': 'ロンドン警視庁',
+    '0930': 'ジェームズ・ディーン',
     '1001': '中華人民共和国',
     '1002': 'マハトマ・ガンジー',
     '1003': 'ドイツ再統一',
     '1004': 'スプートニク1号',
     '1005': 'スティーブ・ジョブズ',
+    '1007': 'レパントの海戦',
+    '1009': 'チェ・ゲバラ',
     '1010': '1964年東京オリンピック',
     '1012': 'クリストファー・コロンブス',
+    '1013': 'コピアポ落盤事故',
+    '1014': 'ヘイスティングズの戦い',
+    '1020': 'シドニー・オペラハウス',
     '1021': 'トーマス・エジソン',
     '1022': 'キューバ危機',
     '1024': '国際連合',
     '1028': '世界恐慌',
     '1029': 'ARPANET',
     '1031': 'ハロウィン',
+    '1102': '国際宇宙ステーション',
     '1103': '文化の日',
+    '1105': 'ガイ・フォークス事件',
     '1107': 'ロシア革命',
     '1108': 'ヴィルヘルム・レントゲン',
     '1109': 'ベルリンの壁',
     '1111': '第一次世界大戦',
+    '1112': '宮沢賢治',
+    '1115': '七五三',
+    '1117': 'スエズ運河',
     '1118': 'ミッキーマウス',
     '1119': 'ゲティスバーグ演説',
+    '1120': 'ニュルンベルク裁判',
+    '1121': '熱気球',
     '1122': 'ジョン・F・ケネディ',
     '1123': '勤労感謝の日',
     '1124': '種の起源',
     '1125': '坂本龍馬',
+    '1128': '宮崎駿',
     '1201': 'ローザ・パークス',
     '1202': 'ナポレオン1世',
+    '1204': 'ヴォルフガング・アマデウス・モーツァルト',
+    '1205': '禁酒法',
     '1207': '真珠湾攻撃',
     '1208': 'ジョン・レノン',
     '1210': '世界人権デー',
+    '1211': 'ユニセフ',
     '1213': '南京事件',
     '1214': 'ロアール・アムンセン',
+    '1215': '権利章典',
+    '1216': 'ボストン茶会事件',
     '1217': 'ライト兄弟',
+    '1220': 'ルイジアナ購入',
     '1221': '冬至',
     '1224': 'きよしこの夜',
     '1225': 'クリスマス',
+    '1227': 'ヨハネス・ケプラー',
     '1231': '大晦日',
 }
 
@@ -1544,22 +1625,208 @@ def generate_multi_expert_comments(news: dict) -> list:
 WEEKDAY_JP = ['月', '火', '水', '木', '金', '土', '日']
 
 
+def _build_highlights(news: dict) -> list:
+    """_CAT_META に基づくカード用ハイライトリストを生成"""
+    highlights = []
+    for cat, emoji, color in _CAT_META:
+        arts = news.get(cat, [])
+        if arts:
+            highlights.append({'category': cat, 'emoji': emoji,
+                                'color': color, 'article': arts[0]})
+    return highlights
+
+
+def _refresh_ai_batch(news: dict, s_article: dict | None) -> dict:
+    """全AIコンテンツを 1回の API コールで生成し AI_CACHE_TTL 秒キャッシュ。
+    overview / shasetsu_comment / expert_picks を一括生成。
+    5コール → 1コール削減で Gemini 無料枠 (1,500 RPD) 枯渇を防止。
+    """
+    global _ai_batch_cache, _ai_batch_ts
+
+    # ── キャッシュヒット ────────────────────────────────────────────
+    if _ai_batch_cache and time.time() - _ai_batch_ts < AI_CACHE_TTL:
+        remain = int((AI_CACHE_TTL - (time.time() - _ai_batch_ts)) / 60)
+        print(f'[DEBUG] _refresh_ai_batch: キャッシュ済み（残り{remain}分）')
+        return _ai_batch_cache
+
+    # ── 共通データ準備 ───────────────────────────────────────────────
+    day      = datetime.now(JST).timetuple().tm_yday
+    now_jst  = datetime.now(JST)
+    wday     = WEEKDAY_JP[now_jst.weekday()]
+    date_str = f"{now_jst.month}月{now_jst.day}日({wday})"
+    themes   = _detect_themes(news)
+    s_article = s_article or {}
+
+    # ── テンプレートフォールバック ────────────────────────────────────
+    def _fallback(source: str) -> dict:
+        s_title   = s_article.get('title',   '')
+        s_summary = s_article.get('summary', '')[:150]
+        s_source  = s_article.get('source',  '')
+        s_text    = f"{s_title} {s_source} {s_summary}"
+        picks_fb: list[dict] = []
+        seen_fb: set[str] = set()
+        for cat in ['政治', '経済', 'IT・テック', '国際', '国内・社会']:
+            arts = news.get(cat, [])
+            if not arts:
+                continue
+            art  = arts[0]
+            link = art.get('link', '')
+            if link in seen_fb:
+                continue
+            seen_fb.add(link)
+            txt = art.get('title', '') + ' ' + art.get('summary', '')[:100]
+            picks_fb.append({'category': cat, 'text': _template_comment(txt, day),
+                             'label': 'AIによる分析', 'article': art})
+            if len(picks_fb) >= 3:
+                break
+        return {
+            'overview': {
+                'summary': _template_summary(day, date_str, themes),
+                'themes': themes, 'highlights': _build_highlights(news),
+                'source': source,
+            },
+            'shasetsu': {'text': _template_comment(s_text, day), 'label': 'AIによる分析'},
+            'picks':    picks_fb,
+        }
+
+    if not GEMINI_KEY:
+        print('[DEBUG] _refresh_ai_batch: GEMINI_KEY 未設定 → テンプレート使用')
+        return _fallback('template_no_key')
+
+    # ── プロンプト構築 ───────────────────────────────────────────────
+    print(f'[DEBUG] _refresh_ai_batch: GEMINI_KEY 設定済み ({len(GEMINI_KEY)}文字) → 1コールで全AI生成')
+    cat_lines: list[str] = []
+    for cat in ['主要', '経済', '政治', '国際', 'IT・テック', '国内・社会']:
+        arts = news.get(cat, [])
+        titles = [a['title'] for a in arts[:3]]
+        if titles:
+            cat_lines.append(f"【{cat}】{'／'.join(titles)}")
+
+    s_title   = s_article.get('title',   '')
+    s_summary = s_article.get('summary', '')[:150]
+    s_source  = s_article.get('source',  '')
+
+    pick_arts: list[dict] = []
+    seen_p: set[str] = set()
+    for cat in ['政治', '経済', 'IT・テック', '国際', '国内・社会']:
+        arts = news.get(cat, [])
+        if not arts:
+            continue
+        art = arts[0]
+        if art.get('link', '') in seen_p:
+            continue
+        seen_p.add(art.get('link', ''))
+        pick_arts.append({'cat': cat, 'title': art['title'], 'art': art})
+        if len(pick_arts) >= 3:
+            break
+
+    picks_lines = '\n'.join(f'  - [{p["cat"]}] {p["title"]}' for p in pick_arts)
+
+    prompt = (
+        f"本日{date_str}のニュースを分析し、以下のJSON形式のみで回答してください。"
+        "JSONブロック外にテキストを含めないでください。\n\n"
+        f"[ニュース一覧]\n{chr(10).join(cat_lines)}\n\n"
+        f"[注目記事（論点用）]\n{s_title}（{s_source}）：{s_summary}\n\n"
+        f"[AIによる視点用記事]\n{picks_lines}\n\n"
+        '{\n'
+        '  "overview": "今日の全体動向（3〜4文、新聞コラム調、敬体）",\n'
+        '  "shasetsu": "注目記事への論点コメント（2〜3文、敬体）",\n'
+        '  "picks": [\n'
+        '    {"category": "カテゴリ名", "text": "2文コメント（敬体）"}\n'
+        '  ]\n'
+        '}'
+    )
+
+    raw = _call_claude(prompt, max_tokens=700)
+    if not raw:
+        print('[WARN] _refresh_ai_batch: API失敗 → テンプレートにフォールバック')
+        return _fallback('template_api_error')
+
+    # ── JSON 解析（```json ... ``` 形式にも対応） ─────────────────────
+    try:
+        clean = raw.strip()
+        if '```' in clean:
+            clean = re.sub(r'```[a-z]*\n?', '', clean).replace('```', '').strip()
+        start = clean.find('{')
+        end   = clean.rfind('}')
+        if start == -1 or end == -1:
+            raise ValueError('JSONブロックが見つからない')
+        data = json.loads(clean[start:end + 1])
+
+        overview_text = data.get('overview', '').strip()
+        shasetsu_text = data.get('shasetsu', '').strip()
+        picks_raw_lst = data.get('picks', [])
+
+        if not overview_text:
+            raise ValueError('overview が空')
+
+        print(f'[DEBUG] _refresh_ai_batch: JSON解析成功 (overview:{len(overview_text)}文字)')
+
+        picks_out: list[dict] = []
+        for i, p in enumerate(picks_raw_lst[:3]):
+            text = p.get('text', '').strip()
+            cat  = p.get('category', pick_arts[i]['cat'] if i < len(pick_arts) else '')
+            art  = pick_arts[i]['art'] if i < len(pick_arts) else {}
+            if text:
+                picks_out.append({'category': cat, 'text': text,
+                                  'label': 'AIによる分析', 'article': art})
+
+        result = {
+            'overview': {
+                'summary': overview_text, 'themes': themes,
+                'highlights': _build_highlights(news), 'source': 'gemini',
+            },
+            'shasetsu': {
+                'text':  shasetsu_text or _template_comment(s_title, day),
+                'label': 'AIによる分析',
+            },
+            'picks': picks_out or _fallback('template_api_error')['picks'],
+        }
+        _ai_batch_cache = result
+        _ai_batch_ts    = time.time()
+        return result
+
+    except Exception as e:
+        print(f'[WARN] _refresh_ai_batch: JSON解析失敗 ({e}) → テンプレートにフォールバック')
+        return _fallback('template_parse_error')
+
+
+def _check_wiki_exists(title: str) -> bool:
+    """Wikipedia ページの存在を REST API で確認（2秒タイムアウト、結果をキャッシュ）"""
+    if title in _kotoba_wiki_ok:
+        return _kotoba_wiki_ok[title]
+    try:
+        url = (
+            'https://ja.wikipedia.org/api/rest_v1/page/summary/'
+            + urllib.parse.quote(title, safe='')
+        )
+        req = urllib.request.Request(url, headers={'User-Agent': 'MaiChokan/1.0'})
+        with urllib.request.urlopen(req, timeout=2) as resp:
+            ok = resp.status == 200
+    except Exception:
+        ok = False
+    _kotoba_wiki_ok[title] = ok
+    print(f'[DEBUG] _check_wiki_exists: "{title}" → {"OK" if ok else "404/Error"}')
+    return ok
+
+
 def get_kotoba() -> dict:
     day = datetime.now(JST).timetuple().tm_yday
-    k = dict(KOTOBA[day % len(KOTOBA)])  # コピーして image を追加
+    k = dict(KOTOBA[day % len(KOTOBA)])  # コピーして image / wiki_url を追加
     wiki_title   = k.get('wiki', '')
-    google_query = k.get('google', '')
+    # Google 検索クエリ: 明示指定 → なければ word+en で自動生成
+    google_query = k.get('google', '') or f"{k.get('word', '')} {k.get('en', '')}"
     k['image'] = get_wiki_thumb(wiki_title) if wiki_title else ''
     # Wikipedia に画像がなければ Pixabay でフォールバック
     if not k['image'] and PIXABAY_KEY:
         k['image'] = get_pixabay_image(k.get('word', ''))
-    # リンク URL・ラベルの決定（Wikipedia 優先 → Google 検索フォールバック）
-    if wiki_title:
-        k['wiki_url']    = f'https://ja.wikipedia.org/wiki/{urllib.parse.quote(wiki_title)}'
-        k['link_label']  = 'Wikipedia'
-    elif google_query:
-        k['wiki_url']    = f'https://www.google.com/search?q={urllib.parse.quote(google_query)}'
-        k['link_label']  = 'Google で調べる'
+    # リンク URL・ラベルの決定（Wikipedia 存在確認 → 404なら Google 検索へフォールバック）
+    if wiki_title and _check_wiki_exists(wiki_title):
+        k['wiki_url']   = f'https://ja.wikipedia.org/wiki/{urllib.parse.quote(wiki_title)}'
+        k['link_label'] = 'Wikipedia'
+    elif google_query.strip():
+        k['wiki_url']   = f'https://www.google.com/search?q={urllib.parse.quote(google_query.strip())}'
+        k['link_label'] = 'Google で調べる'
     else:
         k['wiki_url']   = ''
         k['link_label'] = ''
@@ -1570,10 +1837,12 @@ def get_kotoba() -> dict:
 
 @app.route('/')
 def index():
-    news     = get_all_news()
-    now      = datetime.now(JST)
-    s_pool   = news.get('政治', []) + news.get('経済', [])
+    news      = get_all_news()
+    now       = datetime.now(JST)
+    s_pool    = news.get('政治', []) + news.get('経済', [])
     s_article = s_pool[0] if s_pool else None
+    # 全 AI コンテンツを 1API コールで生成（5コール→1コール、2時間キャッシュ）
+    ai = _refresh_ai_batch(news, s_article)
     return render_template(
         'index.html',
         news=news,
@@ -1581,21 +1850,23 @@ def index():
         shunshuu=get_shunshuu(news),
         now=now,
         weekday=WEEKDAY_JP[now.weekday()],
-        last_updated=datetime.fromtimestamp(_cache_ts, JST).strftime('%H:%M') if _cache_ts else '—',
+        last_updated=(lambda d: f"{d.hour}:{d.minute:02d}")(datetime.fromtimestamp(_cache_ts, JST)) if _cache_ts else '—',
         today_event=get_today_special(),
-        shasetsu_comment=generate_shasetsu_comment(s_article),
-        news_overview=generate_news_overview(news),
-        expert_picks=generate_multi_expert_comments(news),
+        shasetsu_comment=ai['shasetsu'],
+        news_overview=ai['overview'],
+        expert_picks=ai['picks'],
     )
 
 
 @app.route('/refresh', methods=['POST'])
 def refresh():
-    global _cache_ts, _ai_cache, _ai_cache_ts, _ai_comment_cache
+    global _cache_ts, _ai_cache, _ai_cache_ts, _ai_comment_cache, _ai_batch_cache, _ai_batch_ts
     _cache_ts = 0.0
     _ai_cache.clear()
     _ai_cache_ts = 0.0
     _ai_comment_cache.clear()
+    _ai_batch_cache.clear()
+    _ai_batch_ts = 0.0
     get_all_news()
     return redirect('/')
 

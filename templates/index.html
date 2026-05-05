@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>朝凪 — {{ now.strftime('%Y年%m月%d日') }}（{{ weekday }}）</title>
+  <title>朝凪 — {{ now.year }}年{{ now.month }}月{{ now.day }}日（{{ weekday }}）</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <!-- さくら選定：M PLUS 1p（適度なゴシック、丸みを抑えてクリーンに） -->
@@ -410,7 +410,7 @@
   <div class="mh-inner">
     <div class="mh-top">
       <div class="mh-left">
-        <div class="mh-date">{{ now.strftime('%Y年%m月%d日') }}（{{ weekday }}曜日）</div>
+        <div class="mh-date">{{ now.year }}年{{ now.month }}月{{ now.day }}日（{{ weekday }}曜日）</div>
         {% if today_event %}
           <div class="mh-today">🗓 今日は何の日：{% if today_event.wiki_url %}<a class="mh-today-link" href="{{ today_event.wiki_url }}" target="_blank" rel="noopener">{{ today_event.text }}</a>{% else %}{{ today_event.text }}{% endif %}</div>
         {% endif %}
