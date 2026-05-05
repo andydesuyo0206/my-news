@@ -92,28 +92,36 @@ _ai_comment_cache: dict  = {}    # 記事別コメントキャッシュ（key=�
 
 
 def _call_claude(prompt: str, max_tokens: int = 300) -> str:
-    """Gemini 2.0 Flash を呼び出してテキスト生成（google-genai 新SDK）。失敗時は空文字"""
+    """Gemini 2.0 Flash REST API でテキスト生成（パッケージ不要）。失敗時は空文字"""
     if not GEMINI_KEY:
         print('[DEBUG] GEMINI_KEY 未設定 → テンプレート使用')
         return ''
     try:
-        from google import genai
-        from google.genai import types
-        client   = genai.Client(api_key=GEMINI_KEY)
-        response = client.models.generate_content(
-            model='gemini-2.0-flash',
-            contents=prompt,
-            config=types.GenerateContentConfig(
-                max_output_tokens=max_tokens,
-                temperature=0.7,
-            ),
+        url  = (
+            'https://generativelanguage.googleapis.com/v1beta'
+            f'/models/gemini-2.0-flash:generateContent?key={GEMINI_KEY}'
         )
-        text = (response.text or '').strip()
-        if text:
+        body = json.dumps({
+            'contents': [{'parts': [{'text': prompt}]}],
+            'generationConfig': {
+                'maxOutputTokens': max_tokens,
+                'temperature': 0.7,
+            },
+        }).encode()
+        req = urllib.request.Request(
+            url, data=body,
+            headers={'Content-Type': 'application/json'},
+            method='POST',
+        )
+        with urllib.request.urlopen(req, timeout=15) as resp:
+            data = json.loads(resp.read())
+            text = data['candidates'][0]['content']['parts'][0]['text'].strip()
             print(f'[DEBUG] Gemini 生成成功 ({len(text)}文字)')
-        else:
-            print('[WARN] Gemini レスポンスが空')
-        return text
+            return text
+    except urllib.error.HTTPError as e:
+        body_txt = e.read().decode()
+        print(f'[WARN] Gemini API HTTPError {e.code}: {body_txt[:200]}')
+        return ''
     except Exception as e:
         print(f'[WARN] Gemini API 失敗: {type(e).__name__}: {e}')
         return ''
@@ -1203,7 +1211,8 @@ def _template_summary(day: int, date_str: str, themes: list[str]) -> str:
     if 'テクノロジー' in themes: body.append(_OV_TECH[day % len(_OV_TECH)])
     if '社会'        in themes: body.append(_OV_SOC[day  % len(_OV_SOC)])
     closing = _OV_CLOSINGS[day % len(_OV_CLOSINGS)]
-    return intro + '　' + '　'.join(body[:3]) + '　' + closing
+    parts = [intro] + body[:3] + [closing]
+    return ''.join(parts)
 
 
 def generate_news_overview(news: dict) -> dict:
