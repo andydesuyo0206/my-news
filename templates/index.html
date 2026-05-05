@@ -442,9 +442,9 @@
       <!-- ══ 今日のニュース全体像 ══ -->
       <section id="top" class="overview">
         <div class="overview-hd">
-          <div class="overview-title">🧭 今日のニュース全体像</div>
+          <div class="overview-title">🗞 主要ニュース整理</div>
           <div class="overview-badges">
-            <span class="ov-badge ov-badge-ai">✦ AI分析</span>
+            <span class="ov-badge ov-badge-ai">✦ AIによる分析</span>
             <span class="ov-badge">毎朝更新</span>
           </div>
         </div>
@@ -638,7 +638,7 @@
         <div class="sc shasetsu">
           <div class="sc-hd">
             <span>✒️</span>
-            <span class="sc-title">社説・論点</span>
+            <span class="sc-title">論点</span>
           </div>
           <div class="shasetsu-body">
             <div class="shasetsu-badge">◆ 本日注目の論点</div>
@@ -651,9 +651,9 @@
             {% endif %}
             {% if shasetsu_comment %}
               <div class="shasetsu-sect">
-                <div class="shasetsu-label">◆ 識者の視点</div>
+                <div class="shasetsu-label">◆ AIによる視点</div>
                 <blockquote class="shasetsu-quote">{{ shasetsu_comment.text }}</blockquote>
-                <div class="shasetsu-expert">── {{ shasetsu_comment.expert_name }}（{{ shasetsu_comment.expert_title }}）</div>
+                <div class="shasetsu-expert">── {{ shasetsu_comment.label }}</div>
               </div>
             {% else %}
               <div class="shasetsu-sect">
@@ -671,7 +671,7 @@
         <div class="sc expert-picks">
           <div class="sc-hd">
             <span>📣</span>
-            <span class="sc-title">専門家の視点</span>
+            <span class="sc-title">AIによる視点</span>
           </div>
           {% for pick in expert_picks %}
             <div class="ep-item">
@@ -680,7 +680,7 @@
                 <a href="{{ pick.article.link }}" target="_blank" rel="noopener">{{ pick.article.title[:45] }}{% if pick.article.title|length > 45 %}…{% endif %}</a>
               </div>
               <blockquote class="ep-quote">{{ pick.text }}</blockquote>
-              <div class="ep-byline">── {{ pick.expert_name }}（{{ pick.expert_title }}）</div>
+              <div class="ep-byline">── {{ pick.label }}</div>
             </div>
           {% endfor %}
         </div>

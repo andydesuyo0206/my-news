@@ -84,6 +84,31 @@ CACHE_TTL = 1800  # 30分
 PIXABAY_KEY = os.environ.get('PIXABAY_API_KEY', '')
 _pixabay_cache: dict = {}
 
+# ─── Claude API（概観・コメント生成。Render環境変数 ANTHROPIC_API_KEY を設定） ──
+ANTHROPIC_KEY  = os.environ.get('ANTHROPIC_API_KEY', '')
+_ai_cache:         dict  = {}    # 概観テキストキャッシュ
+_ai_cache_ts:      float = 0.0
+_ai_comment_cache: dict  = {}    # 記事別コメントキャッシュ（key=記事URL）
+
+
+def _call_claude(prompt: str, max_tokens: int = 300) -> str:
+    """Claude Haiku を呼び出してテキスト生成。失敗時は空文字を返す"""
+    if not ANTHROPIC_KEY:
+        return ''
+    try:
+        import anthropic
+        client = anthropic.Anthropic(api_key=ANTHROPIC_KEY)
+        msg = client.messages.create(
+            model='claude-3-5-haiku-20241022',
+            max_tokens=max_tokens,
+            timeout=12.0,
+            messages=[{'role': 'user', 'content': prompt}],
+        )
+        return msg.content[0].text.strip()
+    except Exception as e:
+        print(f'[WARN] Claude API 呼び出し失敗: {e}')
+        return ''
+
 
 def strip_html(text: str) -> str:
     return re.sub(r'<[^>]+>', '', text or '').replace('&nbsp;', ' ').replace('&amp;', '&').replace('&lt;', '<').replace('&gt;', '>').strip()
@@ -1134,23 +1159,18 @@ _CAT_META = [
 ]
 
 
-def generate_news_overview(news: dict) -> dict:
-    """全カテゴリのニュースを横断分析し、今日の全体像テキストを生成する"""
-    day = datetime.now(JST).timetuple().tm_yday
-    now = datetime.now(JST)
-
-    # 全タイトルを結合してキーワード検出
+def _detect_themes(news: dict) -> list[str]:
+    """ニュースタイトル群からテーマを検出"""
     all_titles = []
     for articles in news.values():
         all_titles.extend([a['title'] for a in articles[:3]])
     full = ' '.join(all_titles)
-
     themes: list[str] = []
     if any(kw in full for kw in ['経済', '株', '円', '物価', '金利', '市場', 'GDP',
-                                   '財政', '予算', '決算', '景気', '賃金']):
+                                   '財政', '予算', '決算', '景気', '賃金', '業績']):
         themes.append('経済')
     if any(kw in full for kw in ['政治', '政府', '内閣', '首相', '選挙', '国会',
-                                   '与党', '野党', '法案', '政策']):
+                                   '与党', '野党', '法案', '政策', '大臣']):
         themes.append('政治')
     if any(kw in full for kw in ['米国', 'アメリカ', '中国', 'ロシア', '国際',
                                    '外交', 'NATO', '国連', '紛争', 'ウクライナ', '台湾']):
@@ -1159,14 +1179,14 @@ def generate_news_overview(news: dict) -> dict:
                                    'DX', 'サイバー', 'クラウド', '生成']):
         themes.append('テクノロジー')
     if any(kw in full for kw in ['社会', '事件', '災害', '医療', '環境',
-                                   '少子化', '福祉', '労働', '介護']):
+                                   '少子化', '福祉', '労働', '介護', '教育']):
         themes.append('社会')
-    if not themes:
-        themes = ['経済', '社会']
+    return themes if themes else ['経済', '社会']
 
-    date_str = now.strftime('%m月%d日')
-    intro    = _OV_INTROS[day % len(_OV_INTROS)].format(date=date_str)
 
+def _template_summary(day: int, date_str: str, themes: list[str]) -> str:
+    """Claude 不使用時のテンプレートフォールバック"""
+    intro   = _OV_INTROS[day % len(_OV_INTROS)].format(date=date_str)
     body: list[str] = []
     if '経済'        in themes: body.append(_OV_ECON[day % len(_OV_ECON)])
     if '政治'        in themes: body.append(_OV_POL[day  % len(_OV_POL)])
@@ -1174,16 +1194,54 @@ def generate_news_overview(news: dict) -> dict:
     if 'テクノロジー' in themes: body.append(_OV_TECH[day % len(_OV_TECH)])
     if '社会'        in themes: body.append(_OV_SOC[day  % len(_OV_SOC)])
     closing = _OV_CLOSINGS[day % len(_OV_CLOSINGS)]
+    return intro + '　' + '　'.join(body[:3]) + '　' + closing
 
-    summary = intro + '　' + '　'.join(body[:3]) + '　' + closing
 
-    # カテゴリ別ハイライト（4カテゴリの先頭記事）
+def generate_news_overview(news: dict) -> dict:
+    """全カテゴリのニュースを横断分析し、主要ニュース整理テキストを生成する"""
+    global _ai_cache, _ai_cache_ts
+    day = datetime.now(JST).timetuple().tm_yday
+    now = datetime.now(JST)
+
+    # ゼロパディングなし・曜日付き日付文字列
+    wday     = WEEKDAY_JP[now.weekday()]
+    date_str = f"{now.month}月{now.day}日({wday})"
+
+    themes     = _detect_themes(news)
     highlights = []
     for cat, emoji, color in _CAT_META:
         arts = news.get(cat, [])
         if arts:
             highlights.append({'category': cat, 'emoji': emoji,
                                 'color': color, 'article': arts[0]})
+
+    # ── AI 概観テキスト（30分キャッシュ）────────────────────────────
+    if ANTHROPIC_KEY and time.time() - _ai_cache_ts < CACHE_TTL and 'overview' in _ai_cache:
+        summary = _ai_cache['overview']
+    elif ANTHROPIC_KEY:
+        cat_lines = []
+        for cat in ['主要', '経済', '政治', '国際', 'IT・テック', '国内・社会']:
+            arts = news.get(cat, [])
+            titles = [a['title'] for a in arts[:3]]
+            if titles:
+                cat_lines.append(f"【{cat}】{'／'.join(titles)}")
+        prompt = (
+            f"本日{date_str}の主要ニュースです：\n"
+            + '\n'.join(cat_lines)
+            + "\n\n上記のニュース群を踏まえ、今日の全体的な動向を3〜4文で自然な日本語で分析してください。"
+              "カテゴリをまたいで関連する点があれば指摘してください。"
+              "文体は新聞コラムのように知的で読みやすく。"
+              "冒頭に日付や「本日は」は不要です。敬体（です・ます調）で書いてください。"
+        )
+        ai_text = _call_claude(prompt, max_tokens=320)
+        if ai_text:
+            summary = ai_text
+            _ai_cache['overview'] = summary
+            _ai_cache_ts = time.time()
+        else:
+            summary = _template_summary(day, date_str, themes)
+    else:
+        summary = _template_summary(day, date_str, themes)
 
     return {'summary': summary, 'themes': themes, 'highlights': highlights}
 
@@ -1359,61 +1417,79 @@ _COMMENT_TEMPLATES: dict[str, list[str]] = {
 }
 
 
-def generate_shasetsu_comment(article: dict) -> dict:
-    """記事タイトル・ソースのキーワードから識者コメント（テンプレート生成）を返す。
-    キーワードが最も多くマッチした専門家を選ぶ（単純な先頭一致より精度向上）。
-    """
-    if not article:
-        return {}
-    text = (article.get('title', '') + ' ' + article.get('source', '') +
-            ' ' + article.get('summary', ''))
-
-    # キーワードマッチ数を集計 → 最多マッチの専門家を選ぶ
-    best_expert = _EXPERTS[-1]  # デフォルト：社会学者
-    best_count  = 0
+def _template_comment(text: str, day: int) -> str:
+    """キーワードマッチで最適なテンプレートコメントを返す（AI不使用時フォールバック）"""
+    best_count = 0
+    best_cat   = 'その他'
     for expert in _EXPERTS:
         count = sum(1 for kw in expert['keywords'] if kw in text)
         if count > best_count:
-            best_count  = count
-            best_expert = expert
+            best_count = count
+            best_cat   = expert['cat']
+    templates = _COMMENT_TEMPLATES.get(best_cat, _COMMENT_TEMPLATES['その他'])
+    return templates[day % len(templates)]
 
-    day       = datetime.now(JST).timetuple().tm_yday
-    cat       = best_expert['cat']
-    templates = _COMMENT_TEMPLATES.get(cat, _COMMENT_TEMPLATES['その他'])
-    comment   = templates[day % len(templates)]
 
-    return {
-        'text':         comment,
-        'expert_name':  best_expert['name'],
-        'expert_title': best_expert['title'],
-        'cat':          cat,
-    }
+def generate_shasetsu_comment(article: dict) -> dict:
+    """記事に対するAI視点コメントを生成。
+    Claude API があれば自然なテキストを生成、なければテンプレートを使用。
+    架空の人名は一切使わず、'AIによる分析' として表示する。
+    """
+    if not article:
+        return {}
+
+    url_key = article.get('link', '')
+    # コメントキャッシュ確認
+    if url_key and url_key in _ai_comment_cache:
+        return _ai_comment_cache[url_key]
+
+    day     = datetime.now(JST).timetuple().tm_yday
+    title   = article.get('title',   '')
+    summary = article.get('summary', '')[:150]
+    source  = article.get('source',  '')
+    text    = title + ' ' + source + ' ' + summary
+
+    if ANTHROPIC_KEY:
+        prompt = (
+            f"ニュース記事：「{title}」（{source}）\n"
+            f"概要：{summary}\n\n"
+            "この記事について、社会・経済・政治など関連する文脈を踏まえた"
+            "専門的かつ分かりやすいコメントを2〜3文で書いてください。"
+            "読者が「この問題をどう捉えればよいか」「次に何を注目すべきか」が"
+            "分かる内容にしてください。敬体（です・ます調）で書いてください。"
+        )
+        comment_text = _call_claude(prompt, max_tokens=220)
+        if not comment_text:
+            comment_text = _template_comment(text, day)
+    else:
+        comment_text = _template_comment(text, day)
+
+    result = {'text': comment_text, 'label': 'AIによる分析'}
+    if url_key:
+        _ai_comment_cache[url_key] = result
+    return result
 
 
 def generate_multi_expert_comments(news: dict) -> list:
-    """カテゴリをまたいで最大3件の識者コメントを生成（専門家の重複なし）"""
+    """カテゴリをまたいで最大3件のAI視点コメントを生成（記事の重複なし）"""
     comments: list[dict] = []
-    used_experts: set[str] = set()
+    seen_links: set[str] = set()
 
     priority = ['政治', '経済', 'IT・テック', '国際', '国内・社会', '文化・科学']
     for cat in priority:
         arts = news.get(cat, [])
         if not arts:
             continue
-        result = generate_shasetsu_comment(arts[0])
+        article = arts[0]
+        link    = article.get('link', '')
+        if link in seen_links:
+            continue
+        result = generate_shasetsu_comment(article)
         if not result:
             continue
-        name = result['expert_name']
-        if name in used_experts:
-            # 同じ専門家が選ばれた場合は2番目の記事で再チャレンジ
-            if len(arts) > 1:
-                result = generate_shasetsu_comment(arts[1])
-                if not result or result['expert_name'] in used_experts:
-                    continue
-            else:
-                continue
-        used_experts.add(result['expert_name'])
-        result['article']  = arts[0]
+        seen_links.add(link)
+        result = dict(result)   # シャローコピー（article を追加するため）
+        result['article']  = article
         result['category'] = cat
         comments.append(result)
         if len(comments) >= 3:
@@ -1467,8 +1543,11 @@ def index():
 
 @app.route('/refresh', methods=['POST'])
 def refresh():
-    global _cache_ts
+    global _cache_ts, _ai_cache, _ai_cache_ts, _ai_comment_cache
     _cache_ts = 0.0
+    _ai_cache.clear()
+    _ai_cache_ts = 0.0
+    _ai_comment_cache.clear()
     get_all_news()
     return redirect('/')
 
