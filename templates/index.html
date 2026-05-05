@@ -78,6 +78,11 @@
       font-size: .52rem; font-weight: 500; letter-spacing: .38em;
       color: rgba(255,255,255,.45); line-height: 1;
     }
+    .mh-logo-sub {
+      font-family: var(--font-b); font-size: .48rem; font-weight: 400;
+      letter-spacing: .14em; color: rgba(255,255,255,.28);
+      line-height: 1; margin-top: 4px;
+    }
     .mh-right {
       display: flex; flex-direction: column;
       align-items: flex-end; gap: 5px;
@@ -411,6 +416,7 @@
       <div class="mh-logo" onclick="scrollTo(0,0)">
         朝凪
         <span class="mh-logo-kana">あさなぎ</span>
+        <span class="mh-logo-sub">考える人の、朝の情報整理</span>
       </div>
       <div class="mh-right">
         <form action="/refresh" method="post" style="margin:0">
@@ -652,7 +658,6 @@
               <div class="shasetsu-sect">
                 <div class="shasetsu-label">◆ AIによる視点</div>
                 <blockquote class="shasetsu-quote">{{ shasetsu_comment.text }}</blockquote>
-                <div class="shasetsu-expert">── {{ shasetsu_comment.label }}</div>
               </div>
             {% else %}
               <div class="shasetsu-sect">
@@ -679,7 +684,6 @@
                 <a href="{{ pick.article.link }}" target="_blank" rel="noopener">{{ pick.article.title[:45] }}{% if pick.article.title|length > 45 %}…{% endif %}</a>
               </div>
               <blockquote class="ep-quote">{{ pick.text }}</blockquote>
-              <div class="ep-byline">── {{ pick.label }}</div>
             </div>
           {% endfor %}
         </div>
