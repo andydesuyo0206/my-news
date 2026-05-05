@@ -112,7 +112,95 @@
     .wrap { display: grid; grid-template-columns: 1fr 314px; gap: 26px; align-items: start; }
     .main { min-width: 0; }
 
-    /* ══ トップ見出し ══════════════════════════════════════════ */
+    /* ══ 今日のニュース全体像 ══════════════════════════════════ */
+    .overview {
+      background: var(--card); border: 1px solid var(--border);
+      border-top: 4px solid var(--navy); border-radius: var(--radius);
+      margin-bottom: 20px; box-shadow: var(--shadow-sm); overflow: hidden;
+    }
+    .overview-hd {
+      background: linear-gradient(135deg, var(--navy-dark) 0%, #1e3a5f 100%);
+      padding: 16px 24px 14px;
+      display: flex; align-items: center; justify-content: space-between; gap: 12px;
+    }
+    .overview-title {
+      font-family: var(--font-h); font-size: 1.05rem; font-weight: 900;
+      color: #fff; letter-spacing: .05em;
+    }
+    .overview-badges { display: flex; gap: 6px; flex-shrink: 0; }
+    .ov-badge {
+      font-size: .58rem; font-weight: 700; letter-spacing: .08em;
+      padding: 2px 8px; border-radius: 10px;
+      background: rgba(255,255,255,.12); color: rgba(255,255,255,.75);
+    }
+    .ov-badge-ai { background: #1d4ed8; color: #bfdbfe; }
+    .overview-themes {
+      padding: 12px 24px 0; display: flex; gap: 6px; flex-wrap: wrap;
+    }
+    .theme-pill {
+      font-family: var(--font-h); font-size: .63rem; font-weight: 800;
+      padding: 3px 10px; border-radius: 12px; letter-spacing: .05em;
+      background: #eff6ff; color: var(--accent); border: 1px solid #bfdbfe;
+    }
+    .overview-summary {
+      padding: 14px 24px 16px;
+      font-size: .88rem; color: var(--text-2); line-height: 2.0;
+    }
+    .overview-grid {
+      display: grid; grid-template-columns: repeat(4, 1fr);
+      gap: 1px; background: var(--border-lt);
+      border-top: 1px solid var(--border-lt);
+    }
+    .ov-card {
+      background: var(--card); padding: 12px 14px;
+      cursor: pointer; transition: background var(--tr);
+    }
+    .ov-card:hover { background: #f0f6ff; }
+    .ov-card-cat {
+      font-family: var(--font-h); font-size: .6rem; font-weight: 800;
+      letter-spacing: .1em; margin-bottom: 6px;
+    }
+    .ov-card-title {
+      font-family: var(--font-h); font-size: .82rem; font-weight: 700;
+      color: var(--navy-dark); line-height: 1.55;
+      display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden;
+      transition: color var(--tr);
+    }
+    .ov-card:hover .ov-card-title { color: var(--accent); }
+    .ov-card-src { font-size: .6rem; color: var(--muted-lt); margin-top: 5px; }
+    @media(max-width:900px){ .overview-grid { grid-template-columns: repeat(2,1fr); } }
+    @media(max-width:540px){ .overview-grid { grid-template-columns: 1fr; } }
+
+    /* ══ 専門家の視点 ════════════════════════════════════════════ */
+    .expert-picks { border-top: 3px solid #0891b2; }
+    .expert-picks .sc-hd { background: #f0f9ff; }
+    .expert-picks .sc-title { color: #0c4a6e; }
+    .ep-item {
+      padding: 12px 16px; border-bottom: 1px solid var(--border-lt);
+    }
+    .ep-item:last-child { border-bottom: none; }
+    .ep-cat {
+      display: inline-block; font-size: .58rem; font-weight: 800;
+      letter-spacing: .1em; padding: 1px 7px; border-radius: 8px;
+      background: #e0f2fe; color: #0284c7; margin-bottom: 5px;
+    }
+    .ep-headline {
+      font-family: var(--font-h); font-size: .82rem; font-weight: 700;
+      color: var(--navy-dark); line-height: 1.5; margin-bottom: 6px;
+    }
+    .ep-headline a:hover { color: #0891b2; }
+    .ep-quote {
+      font-size: .76rem; color: var(--text-2); line-height: 1.82;
+      border-left: 3px solid #0891b2; padding: 5px 10px;
+      background: #f0f9ff; border-radius: 0 4px 4px 0; font-style: italic;
+      margin: 0;
+    }
+    .ep-byline {
+      font-size: .61rem; color: var(--muted-lt);
+      text-align: right; margin-top: 5px; font-style: normal;
+    }
+
+    /* ══ トップ見出し（旧ヒーロー、非推奨→残しておく） ══════════ */
     .hero {
       background: var(--card); border: 1px solid var(--border);
       border-top: 4px solid var(--navy); border-radius: var(--radius);
@@ -351,30 +439,33 @@
     <!-- 左：ニュース -->
     <main class="main">
 
-      <!-- トップニュース -->
-      {% set top = news.get('主要', []) %}
-      {% if top %}
-        {% set hero = top[0] %}
-        <section id="top" class="hero">
-          <div class="hero-badge">📌 本日のトップニュース</div>
-          <div class="hero-title"><a href="{{ hero.link }}" target="_blank" rel="noopener">{{ hero.title }}</a></div>
-          {% if hero.summary %}<div class="hero-summary">{{ hero.summary }}</div>{% endif %}
-          <div class="hero-foot">
-            <span>── {{ hero.source }}</span>
-            <span>{{ hero.published }}</span>
+      <!-- ══ 今日のニュース全体像 ══ -->
+      <section id="top" class="overview">
+        <div class="overview-hd">
+          <div class="overview-title">🧭 今日のニュース全体像</div>
+          <div class="overview-badges">
+            <span class="ov-badge ov-badge-ai">✦ AI分析</span>
+            <span class="ov-badge">毎朝更新</span>
           </div>
-          {% if top|length > 1 %}
-            <div class="sub-grid">
-              {% for art in top[1:5] %}
-                <div class="sub-art">
-                  <a href="{{ art.link }}" target="_blank" rel="noopener">{{ art.title }}</a>
-                  <span class="sub-src">{{ art.source }}</span>
-                </div>
-              {% endfor %}
-            </div>
-          {% endif %}
-        </section>
-      {% endif %}
+        </div>
+        {% if news_overview.themes %}
+          <div class="overview-themes">
+            {% for t in news_overview.themes %}<span class="theme-pill">{{ t }}</span>{% endfor %}
+          </div>
+        {% endif %}
+        <div class="overview-summary">{{ news_overview.summary }}</div>
+        {% if news_overview.highlights %}
+          <div class="overview-grid">
+            {% for item in news_overview.highlights %}
+              <div class="ov-card" onclick="window.open('{{ item.article.link }}','_blank')">
+                <div class="ov-card-cat" style="color:{{ item.color }}">{{ item.emoji }} {{ item.category }}</div>
+                <div class="ov-card-title">{{ item.article.title }}</div>
+                <div class="ov-card-src">{{ item.article.source }}</div>
+              </div>
+            {% endfor %}
+          </div>
+        {% endif %}
+      </section>
 
       <!-- 経済 -->
       {% set arts = news.get('経済', []) %}
@@ -572,6 +663,26 @@
             {% endif %}
             <div class="shasetsu-src">── {{ s.source }}</div>
           </div>
+        </div>
+      {% endif %}
+
+      <!-- 専門家の視点 -->
+      {% if expert_picks %}
+        <div class="sc expert-picks">
+          <div class="sc-hd">
+            <span>📣</span>
+            <span class="sc-title">専門家の視点</span>
+          </div>
+          {% for pick in expert_picks %}
+            <div class="ep-item">
+              <div class="ep-cat">{{ pick.category }}</div>
+              <div class="ep-headline">
+                <a href="{{ pick.article.link }}" target="_blank" rel="noopener">{{ pick.article.title[:45] }}{% if pick.article.title|length > 45 %}…{% endif %}</a>
+              </div>
+              <blockquote class="ep-quote">{{ pick.text }}</blockquote>
+              <div class="ep-byline">── {{ pick.expert_name }}（{{ pick.expert_title }}）</div>
+            </div>
+          {% endfor %}
         </div>
       {% endif %}
 
