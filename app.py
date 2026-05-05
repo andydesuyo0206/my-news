@@ -14,49 +14,63 @@ JST = ZoneInfo('Asia/Tokyo')
 
 app = Flask(__name__)
 
-# ─── 健司選定 RSSフィード ────────────────────────────────────────
+# ─── 健司選定 RSSフィード（NHKは各カテゴリ末尾に配置し偏りを抑制） ──
 
 FEEDS = {
     '主要': [
-        ('NHK',          'https://www3.nhk.or.jp/rss/news/cat0.xml'),
+        ('朝日新聞',      'https://www.asahi.com/rss/asahi/newsheadlines.rdf'),
         ('毎日新聞',      'https://mainichi.jp/rss/etc/mainichi-flash.rss'),
+        ('47NEWS',        'https://www.47news.jp/articles.rss'),
         ('Yahoo!ニュース', 'https://news.yahoo.co.jp/rss/topics/top-picks.xml'),
         ('財経新聞',      'https://www.zaikei.co.jp/rss/news.rdf'),
+        ('NHK',           'https://www3.nhk.or.jp/rss/news/cat0.xml'),   # 末尾
     ],
-    '経済': [  # 経済・企業・金融・市場に特化したソースのみ
+    '経済': [
         ('Reuters 経済',   'https://feeds.reuters.com/reuters/businessNews'),
-        ('NHK経済',        'https://www3.nhk.or.jp/rss/news/cat3.xml'),
         ('東洋経済',       'https://toyokeizai.net/list/feed/rss'),
+        ('プレジデントOL', 'https://president.jp/list/feed/rss'),
         ('日経ビジネス',   'https://business.nikkei.com/rss/sns/nb.rdf'),
+        ('マネーポスト',   'https://www.moneypost.jp/feed'),
         ('財経新聞 経済',  'https://www.zaikei.co.jp/rss/economy.rdf'),
+        ('NHK経済',        'https://www3.nhk.or.jp/rss/news/cat3.xml'),  # 末尾
     ],
     '政治': [
-        ('NHK政治',    'https://www3.nhk.or.jp/rss/news/cat4.xml'),
         ('財経新聞 政治', 'https://www.zaikei.co.jp/rss/politics.rdf'),
+        ('Yahoo! 政治',   'https://news.yahoo.co.jp/rss/topics/politics.xml'),
+        ('朝日新聞 政治', 'https://www.asahi.com/rss/politics/index.rdf'),
+        ('NHK政治',       'https://www3.nhk.or.jp/rss/news/cat4.xml'),   # 末尾
     ],
-    '国際': [  # 安全保障・地政学を意識した構成
-        ('NHK国際',       'https://www3.nhk.or.jp/rss/news/cat5.xml'),
-        ('Reuters World', 'https://feeds.reuters.com/reuters/worldNews'),
-        ('NYT World',     'https://rss.nytimes.com/services/xml/rss/nyt/World.xml'),
-        ('BBC World',     'http://feeds.bbci.co.uk/news/world/rss.xml'),
-        ('Guardian World','https://www.theguardian.com/world/rss'),
-        ('Yahoo! 国際',   'https://news.yahoo.co.jp/rss/topics/world.xml'),
+    '国際': [
+        ('Reuters World',    'https://feeds.reuters.com/reuters/worldNews'),
+        ('NYT World',        'https://rss.nytimes.com/services/xml/rss/nyt/World.xml'),
+        ('BBC World',        'http://feeds.bbci.co.uk/news/world/rss.xml'),
+        ('CNN World',        'http://rss.cnn.com/rss/edition_world.rss'),
+        ('Guardian World',   'https://www.theguardian.com/world/rss'),
+        ('Washington Post',  'https://feeds.washingtonpost.com/rss/world'),
+        ('AFP BB News',      'https://feeds.afpbb.com/rss/afpbb/afpbbnews'),
+        ('Yahoo! 国際',      'https://news.yahoo.co.jp/rss/topics/world.xml'),
+        ('NHK国際',          'https://www3.nhk.or.jp/rss/news/cat5.xml'),# 末尾
     ],
     'IT・テック': [
-        ('ITmedia',   'https://rss.itmedia.co.jp/rss/2.0/news_bursts.xml'),
-        ('GIGAZINE',  'https://gigazine.net/news/rss_2.0/'),
-        ('CNET Japan','http://feeds.japan.cnet.com/rss/cnet/all.rdf'),
-        ('Impress',   'https://www.watch.impress.co.jp/data/rss/1.0/ipw/feed.rdf'),
+        ('ITmedia',    'https://rss.itmedia.co.jp/rss/2.0/news_bursts.xml'),
+        ('The Verge',  'https://www.theverge.com/rss/index.xml'),
+        ('Wired JP',   'https://wired.jp/rss/'),
+        ('GIGAZINE',   'https://gigazine.net/news/rss_2.0/'),
+        ('CNET Japan', 'http://feeds.japan.cnet.com/rss/cnet/all.rdf'),
+        ('Impress',    'https://www.watch.impress.co.jp/data/rss/1.0/ipw/feed.rdf'),
     ],
     '文化・科学': [
-        ('NHK文化',    'https://www3.nhk.or.jp/rss/news/cat2.xml'),
         ('現代ビジネス', 'https://gendai.media/rss'),
+        ('NHK科学',      'https://www3.nhk.or.jp/rss/news/cat7.xml'),
+        ('NHK文化',      'https://www3.nhk.or.jp/rss/news/cat2.xml'),
     ],
     '国内・社会': [
-        ('NHK社会',    'https://www3.nhk.or.jp/rss/news/cat1.xml'),
-        ('毎日新聞 社会','https://mainichi.jp/rss/etc/mainichi-flash.rss'),
-        ('Yahoo! 国内', 'https://news.yahoo.co.jp/rss/topics/domestic.xml'),
-        ('財経新聞 社会','https://www.zaikei.co.jp/rss/social.rdf'),
+        ('朝日新聞',      'https://www.asahi.com/rss/asahi/newsheadlines.rdf'),
+        ('47NEWS',        'https://www.47news.jp/articles.rss'),
+        ('毎日新聞 社会', 'https://mainichi.jp/rss/etc/mainichi-flash.rss'),
+        ('Yahoo! 国内',   'https://news.yahoo.co.jp/rss/topics/domestic.xml'),
+        ('財経新聞 社会', 'https://www.zaikei.co.jp/rss/social.rdf'),
+        ('NHK社会',       'https://www3.nhk.or.jp/rss/news/cat1.xml'),   # 末尾
     ],
 }
 

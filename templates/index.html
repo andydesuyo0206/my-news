@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>マイ朝刊 — {{ now.strftime('%Y年%m月%d日') }}（{{ weekday }}）</title>
+  <title>朝凪 — {{ now.strftime('%Y年%m月%d日') }}（{{ weekday }}）</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <!-- さくら選定：M PLUS 1p（適度なゴシック、丸みを抑えてクリーンに） -->
@@ -59,9 +59,13 @@
     .mh-date { font-family: var(--font-h); font-size: .74rem; color: rgba(255,255,255,.55); letter-spacing: .04em; }
     .mh-edition { font-size: .6rem; color: rgba(255,255,255,.28); letter-spacing: .06em; margin-top: 1px; }
     .mh-logo {
-      font-family: var(--font-h); font-size: 2rem; font-weight: 900;
+      font-family: var(--font-h); font-size: 1.85rem; font-weight: 900;
       color: #fff; text-align: center; cursor: pointer; letter-spacing: .18em;
-      user-select: none;
+      user-select: none; display: flex; flex-direction: column; align-items: center; gap: 1px;
+    }
+    .mh-logo-kana {
+      font-size: .52rem; font-weight: 500; letter-spacing: .38em;
+      color: rgba(255,255,255,.45); line-height: 1;
     }
     .mh-right { display: flex; justify-content: flex-end; align-items: center; }
     .btn-refresh {
@@ -77,13 +81,13 @@
     .mh-nav { display: flex; overflow-x: auto; scrollbar-width: none; padding: 0 20px; gap: 2px; }
     .mh-nav::-webkit-scrollbar { display: none; }
     .mh-nav a {
-      font-family: var(--font-h); font-size: .77rem; font-weight: 700;
-      color: rgba(255,255,255,.46); padding: 10px 14px;
+      font-family: var(--font-h); font-size: .78rem; font-weight: 700;
+      color: rgba(255,255,255,.84); padding: 10px 14px;
       white-space: nowrap; letter-spacing: .05em;
       border-radius: 6px 6px 0 0;
       transition: color var(--tr), background var(--tr);
     }
-    .mh-nav a:hover { color: rgba(255,255,255,.92); background: rgba(255,255,255,.08); }
+    .mh-nav a:hover { color: #fff; background: rgba(255,255,255,.12); }
 
     /* ══ レイアウト ══════════════════════════════════════════════ */
     .page { max-width: 1280px; margin: 0 auto; padding: 24px 24px 60px; }
@@ -163,7 +167,18 @@
     .no-art { padding: 24px; font-size: .84rem; color: var(--muted); text-align: center; }
 
     /* ══ サイドバー共通 ════════════════════════════════════════ */
-    .sidebar { position: sticky; top: 88px; display: flex; flex-direction: column; gap: 16px; }
+    .sidebar {
+      position: sticky; top: 88px;
+      max-height: calc(100vh - 100px);
+      overflow-y: auto;
+      scrollbar-width: thin;
+      scrollbar-color: rgba(0,0,0,.1) transparent;
+      display: flex; flex-direction: column; gap: 16px;
+      padding-right: 2px; /* スクロールバー分の余白 */
+    }
+    .sidebar::-webkit-scrollbar { width: 4px; }
+    .sidebar::-webkit-scrollbar-track { background: transparent; }
+    .sidebar::-webkit-scrollbar-thumb { background: rgba(0,0,0,.12); border-radius: 4px; }
     .sc { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; box-shadow: var(--shadow-sm); }
     .sc-hd { padding: 10px 16px; display: flex; align-items: center; gap: 8px; border-bottom: 1px solid var(--border-lt); }
     .sc-title { font-family: var(--font-h); font-size: .84rem; font-weight: 800; letter-spacing: .05em; }
@@ -262,7 +277,10 @@
         <div class="mh-date">{{ now.strftime('%Y年%m月%d日') }}（{{ weekday }}曜日）</div>
         <div class="mh-edition">最終更新 {{ last_updated }}</div>
       </div>
-      <div class="mh-logo" onclick="scrollTo(0,0)">マイ朝刊</div>
+      <div class="mh-logo" onclick="scrollTo(0,0)">
+        朝凪
+        <span class="mh-logo-kana">あさなぎ</span>
+      </div>
       <div class="mh-right">
         <form action="/refresh" method="post" style="margin:0">
           <button class="btn-refresh" type="submit">↻ 最新に更新</button>
@@ -484,7 +502,7 @@
 
 <!-- ══ フッター ══════════════════════════════════════════════════ -->
 <footer class="footer">
-  <div>マイ朝刊 — NHK・毎日新聞・Reuters・NYT・BBC・東洋経済 等の公開RSSを集約</div>
+  <div>朝凪（あさなぎ）— 朝日・毎日・Reuters・NYT・BBC・東洋経済 等の公開RSSを集約</div>
   <div>各記事の著作権は配信元に帰属します。ニュースは30分ごとキャッシュ。</div>
 </footer>
 <button class="scroll-top" id="scroll-top-btn" onclick="scrollTo({top:0,behavior:'smooth'})">↑</button>
