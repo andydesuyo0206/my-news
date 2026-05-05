@@ -84,29 +84,28 @@ CACHE_TTL = 1800  # 30分
 PIXABAY_KEY = os.environ.get('PIXABAY_API_KEY', '')
 _pixabay_cache: dict = {}
 
-# ─── Claude API（概観・コメント生成。Render環境変数 ANTHROPIC_API_KEY を設定） ──
-ANTHROPIC_KEY  = os.environ.get('ANTHROPIC_API_KEY', '')
+# ─── Gemini API（概観・コメント生成。Render環境変数 GEMINI_API_KEY を設定） ──
+GEMINI_KEY     = os.environ.get('GEMINI_API_KEY', '')
 _ai_cache:         dict  = {}    # 概観テキストキャッシュ
 _ai_cache_ts:      float = 0.0
 _ai_comment_cache: dict  = {}    # 記事別コメントキャッシュ（key=記事URL）
 
 
 def _call_claude(prompt: str, max_tokens: int = 300) -> str:
-    """Claude Haiku を呼び出してテキスト生成。失敗時は空文字を返す"""
-    if not ANTHROPIC_KEY:
+    """Gemini Flash を呼び出してテキスト生成。失敗時は空文字を返す"""
+    if not GEMINI_KEY:
         return ''
     try:
-        import anthropic
-        client = anthropic.Anthropic(api_key=ANTHROPIC_KEY)
-        msg = client.messages.create(
-            model='claude-3-5-haiku-20241022',
-            max_tokens=max_tokens,
-            timeout=12.0,
-            messages=[{'role': 'user', 'content': prompt}],
+        import google.generativeai as genai
+        genai.configure(api_key=GEMINI_KEY)
+        model    = genai.GenerativeModel('gemini-1.5-flash')
+        response = model.generate_content(
+            prompt,
+            generation_config=genai.GenerationConfig(max_output_tokens=max_tokens),
         )
-        return msg.content[0].text.strip()
+        return response.text.strip()
     except Exception as e:
-        print(f'[WARN] Claude API 呼び出し失敗: {e}')
+        print(f'[WARN] Gemini API 呼び出し失敗: {e}')
         return ''
 
 
@@ -1216,9 +1215,9 @@ def generate_news_overview(news: dict) -> dict:
                                 'color': color, 'article': arts[0]})
 
     # ── AI 概観テキスト（30分キャッシュ）────────────────────────────
-    if ANTHROPIC_KEY and time.time() - _ai_cache_ts < CACHE_TTL and 'overview' in _ai_cache:
+    if GEMINI_KEY and time.time() - _ai_cache_ts < CACHE_TTL and 'overview' in _ai_cache:
         summary = _ai_cache['overview']
-    elif ANTHROPIC_KEY:
+    elif GEMINI_KEY:
         cat_lines = []
         for cat in ['主要', '経済', '政治', '国際', 'IT・テック', '国内・社会']:
             arts = news.get(cat, [])
@@ -1449,7 +1448,7 @@ def generate_shasetsu_comment(article: dict) -> dict:
     source  = article.get('source',  '')
     text    = title + ' ' + source + ' ' + summary
 
-    if ANTHROPIC_KEY:
+    if GEMINI_KEY:
         prompt = (
             f"ニュース記事：「{title}」（{source}）\n"
             f"概要：{summary}\n\n"
