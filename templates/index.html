@@ -6,8 +6,8 @@
   <title>マイ朝刊 — {{ now.strftime('%Y年%m月%d日') }}（{{ weekday }}）</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <!-- さくら選定：M PLUS 1p（丸みを少し削ったゴシック） -->
-  <link href="https://fonts.googleapis.com/css2?family=M+PLUS+1p:wght@400;500;700;800;900&family=Noto+Sans+JP:wght@300;400;500;700&display=swap" rel="stylesheet">
+  <!-- さくら選定：Zen Maru Gothic（ほどよい丸みのゴシック） -->
+  <link href="https://fonts.googleapis.com/css2?family=Zen+Maru+Gothic:wght@400;500;700;900&family=Noto+Sans+JP:wght@300;400;500;700&display=swap" rel="stylesheet">
   <style>
     :root {
       --navy: #1a2e4a; --navy-light: #243d5e; --navy-dark: #0f1e32;
@@ -20,8 +20,8 @@
       --border-light: #ece9e2; --white: #ffffff;
       --shadow-sm: 0 1px 4px rgba(0,0,0,.07);
       --shadow-md: 0 4px 14px rgba(0,0,0,.09);
-      /* さくら選定フォント：M PLUS 1p */
-      --font-head: 'M PLUS 1p', 'Hiragino Sans', 'Meiryo', sans-serif;
+      /* さくら選定フォント：Zen Maru Gothic */
+      --font-head: 'Zen Maru Gothic', 'Hiragino Sans', 'Meiryo', sans-serif;
       --font-body: 'Noto Sans JP', 'Hiragino Sans', 'Meiryo', sans-serif;
       --transition: .22s cubic-bezier(.4,0,.2,1);
     }
@@ -115,7 +115,7 @@
     .shasetsu-text { font-size: .8rem; color: var(--muted); line-height: 1.78; }
     .shasetsu-source { font-size: .67rem; color: var(--muted-light); text-align: right; margin-top: 8px; }
 
-    /* ──── 春秋コラム（悠翔設計） ──── */
+    /* ──── 余白コラム（悠翔設計） ──── */
     .shunshuu-card { background: #f6faf7; border: 1px solid #b5d5be; overflow: hidden; box-shadow: var(--shadow-sm); }
     .shunshuu-card .card-header { background: var(--green-deep); }
     .shunshuu-body { padding: 16px; }
@@ -265,7 +265,6 @@
         <div class="section-header">
           <span>💹</span>
           <h2 class="section-header-title">経済</h2>
-          <span class="section-header-sub">企業・金融・市場</span>
         </div>
         {% if arts %}
           {% for art in arts[:7] %}
@@ -309,7 +308,6 @@
         <div class="section-header">
           <span>🌏</span>
           <h2 class="section-header-title">国際</h2>
-          <span class="section-header-sub">安全保障・地政学</span>
         </div>
         {% if arts %}
           {% for art in arts[:7] %}
@@ -427,10 +425,10 @@
         </div>
       {% endif %}
 
-      <!-- 春秋コラム（悠翔設計） -->
+      <!-- 余白コラム（悠翔設計） -->
       {% if shunshuu.article %}
         <div class="shunshuu-card">
-          <div class="card-header"><span>🌿</span><span class="card-header-title">春秋</span></div>
+          <div class="card-header"><span>🌿</span><span class="card-header-title">余白</span></div>
           <div class="shunshuu-body">
             <p class="shunshuu-opener">{{ shunshuu.opener }}</p>
             <p class="shunshuu-bridge">——今日のニュースから一つ。</p>

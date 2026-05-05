@@ -7,7 +7,10 @@ import re
 import time
 import os
 from datetime import datetime
+from zoneinfo import ZoneInfo
 from flask import Flask, render_template, redirect
+
+JST = ZoneInfo('Asia/Tokyo')
 
 app = Flask(__name__)
 
@@ -277,8 +280,8 @@ SHUNSHUU_CLOSERS = [
 
 
 def get_shunshuu(news: dict) -> dict:
-    """悠翔設計：日経春秋スタイルコラム（書き出し＋RSS記事の橋渡し）"""
-    day = datetime.now().timetuple().tm_yday
+    """悠翔設計：余白コラム（書き出し＋RSS記事の橋渡し）"""
+    day = datetime.now(JST).timetuple().tm_yday
     opener = SHUNSHUU_OPENERS[day % len(SHUNSHUU_OPENERS)]
     closer = SHUNSHUU_CLOSERS[day % len(SHUNSHUU_CLOSERS)]
     # 文化・科学 → 国内・社会 → 経済 の優先度で記事を選ぶ
@@ -295,7 +298,7 @@ WEEKDAY_JP = ['月', '火', '水', '木', '金', '土', '日']
 
 
 def get_kotoba() -> dict:
-    day = datetime.now().timetuple().tm_yday
+    day = datetime.now(JST).timetuple().tm_yday
     return KOTOBA[day % len(KOTOBA)]
 
 
@@ -304,7 +307,7 @@ def get_kotoba() -> dict:
 @app.route('/')
 def index():
     news = get_all_news()
-    now = datetime.now()
+    now = datetime.now(JST)
     return render_template(
         'index.html',
         news=news,
@@ -312,7 +315,7 @@ def index():
         shunshuu=get_shunshuu(news),
         now=now,
         weekday=WEEKDAY_JP[now.weekday()],
-        last_updated=datetime.fromtimestamp(_cache_ts).strftime('%H:%M') if _cache_ts else '—',
+        last_updated=datetime.fromtimestamp(_cache_ts, JST).strftime('%H:%M') if _cache_ts else '—',
     )
 
 
