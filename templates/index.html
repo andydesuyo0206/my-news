@@ -15,10 +15,11 @@
       --navy-dark:   #0e1b2f;
       --navy-bg:     #0a1628;
       --accent:      #1e4d8c;
-      --accent-dark: #163a6b;
-      --gold:        #b8932a;
-      --gold-bright: #d4a843;
-      --gold-pale:   #fdf6e3;
+      --accent-lt:   #2d6cbe;
+      --steel:       #4a7fa5;
+      --steel-pale:  #edf4fa;
+      --teal:        #1a6b82;
+      --teal-pale:   #e8f4f7;
       --green:       #1b5e42;
       --bg:          #f5f2eb;
       --card:        #ffffff;
@@ -36,6 +37,14 @@
       --radius:      4px;
       --tr:          .2s cubic-bezier(.4,0,.2,1);
     }
+    /* ── 読み進みバー ── */
+    .progress-bar {
+      position: fixed; top: 0; left: 0; z-index: 3000;
+      height: 2px; width: 0%;
+      background: var(--accent-lt);
+      transition: width .08s linear;
+      pointer-events: none;
+    }
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
     html { font-size: 16px; scroll-behavior: smooth; }
     body { font-family: var(--font-b); background: var(--bg); color: var(--text); line-height: 1.78; letter-spacing: .02em; overflow-x: hidden; }
@@ -48,12 +57,12 @@
       background: var(--navy-bg);
       border-bottom: 1px solid rgba(255,255,255,.06);
     }
-    /* ゴールドラインを最上部に */
+    /* シルバーラインを最上部に（ゴールドなし） */
     .masthead::before {
       content: '';
       display: block;
-      height: 2px;
-      background: linear-gradient(90deg, transparent 0%, var(--gold-bright) 25%, var(--gold-bright) 75%, transparent 100%);
+      height: 1px;
+      background: linear-gradient(90deg, transparent 0%, rgba(255,255,255,.18) 25%, rgba(255,255,255,.18) 75%, transparent 100%);
     }
     .mh-inner { max-width: 1280px; margin: 0 auto; }
 
@@ -72,13 +81,13 @@
     }
     .mh-today {
       font-size: .63rem; letter-spacing: .02em;
-      color: var(--gold-bright);
+      color: rgba(255,255,255,.55);
     }
     .mh-today-link {
-      color: var(--gold-bright); text-decoration: underline dotted;
+      color: rgba(255,255,255,.65); text-decoration: underline dotted;
       transition: color var(--tr);
     }
-    .mh-today-link:hover { color: #f0c055; }
+    .mh-today-link:hover { color: #fff; }
     /* ロゴ：Playfair Display で高級感 */
     .mh-logo {
       font-family: var(--font-disp); font-size: 2.1rem; font-weight: 800;
@@ -88,7 +97,7 @@
     }
     .mh-logo-kana {
       font-family: var(--font-h); font-size: .5rem; font-weight: 500; letter-spacing: .42em;
-      color: var(--gold-bright); line-height: 1; margin-top: 2px;
+      color: rgba(255,255,255,.45); line-height: 1; margin-top: 2px;
       text-shadow: none;
     }
     .mh-logo-sub {
@@ -105,14 +114,14 @@
       letter-spacing: .05em;
     }
     .btn-refresh {
-      background: transparent; color: var(--gold-bright);
-      border: 1px solid rgba(212,168,67,.5); padding: 6px 15px;
+      background: transparent; color: rgba(255,255,255,.75);
+      border: 1px solid rgba(255,255,255,.22); padding: 6px 15px;
       font-family: var(--font-h); font-size: .68rem; font-weight: 700;
       cursor: pointer; border-radius: 2px; letter-spacing: .06em;
       transition: background var(--tr), border-color var(--tr), color var(--tr);
     }
     .btn-refresh:hover {
-      background: var(--gold-bright); border-color: var(--gold-bright); color: #0a1628;
+      background: rgba(255,255,255,.12); border-color: rgba(255,255,255,.4); color: #fff;
     }
 
     /* ナビゲーション */
@@ -125,7 +134,7 @@
       border-bottom: 2px solid transparent;
       transition: color var(--tr), border-color var(--tr);
     }
-    .mh-nav a:hover { color: var(--gold-bright); border-bottom-color: var(--gold-bright); }
+    .mh-nav a:hover { color: #fff; border-bottom-color: var(--steel); }
 
     /* ══ レイアウト ══════════════════════════════════════════════ */
     .page { max-width: 1280px; margin: 0 auto; padding: 24px 24px 60px; }
@@ -135,7 +144,7 @@
     /* ══ 今日のニュース全体像 ══════════════════════════════════ */
     .overview {
       background: var(--card); border: 1px solid var(--border);
-      border-top: 3px solid var(--gold); border-radius: var(--radius);
+      border-top: 3px solid var(--navy); border-radius: var(--radius);
       margin-bottom: 20px; box-shadow: var(--shadow-sm); overflow: hidden;
     }
     .overview-hd {
@@ -162,7 +171,7 @@
     .theme-pill {
       font-family: var(--font-h); font-size: .6rem; font-weight: 800;
       padding: 2px 9px; border-radius: 2px; letter-spacing: .05em;
-      background: var(--gold-pale); color: var(--gold); border: 1px solid rgba(184,147,42,.3);
+      background: var(--steel-pale); color: var(--accent); border: 1px solid rgba(74,127,165,.25);
     }
     .overview-summary {
       padding: 13px 22px 15px;
@@ -177,7 +186,7 @@
       background: var(--card); padding: 12px 13px;
       cursor: pointer; transition: background var(--tr);
     }
-    .ov-card:hover { background: var(--gold-pale); }
+    .ov-card:hover { background: var(--steel-pale); }
     .ov-card-cat {
       font-family: var(--font-h); font-size: .58rem; font-weight: 800;
       letter-spacing: .1em; margin-bottom: 6px;
@@ -188,7 +197,7 @@
       display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden;
       transition: color var(--tr);
     }
-    .ov-card:hover .ov-card-title { color: var(--gold); }
+    .ov-card:hover .ov-card-title { color: var(--accent); }
     .ov-card-src { font-size: .58rem; color: var(--muted-lt); margin-top: 5px; }
     @media(max-width:900px){ .overview-grid { grid-template-columns: repeat(2,1fr); } }
     @media(max-width:640px){ .overview-grid { grid-template-columns: 1fr; } }
@@ -211,10 +220,11 @@
       color: var(--navy-dark); line-height: 1.5; margin-bottom: 6px;
     }
     .ep-headline a:hover { color: #0891b2; }
+    /* AI視点の引用窓：expert-picksのティール系に統一 */
     .ep-quote {
       font-size: .75rem; color: var(--text-2); line-height: 1.82;
-      border-left: 2px solid var(--gold); padding: 5px 10px;
-      background: var(--gold-pale); border-radius: 0 2px 2px 0; font-style: italic;
+      border-left: 2px solid var(--teal); padding: 5px 10px;
+      background: var(--teal-pale); border-radius: 0 2px 2px 0; font-style: italic;
       margin: 0;
     }
     .ep-byline {
@@ -231,11 +241,11 @@
     .hero-badge {
       display: inline-flex; align-items: center; gap: 6px;
       font-family: var(--font-h); font-size: .63rem; font-weight: 800;
-      color: var(--gold); letter-spacing: .16em; margin-bottom: 12px;
+      color: var(--accent); letter-spacing: .16em; margin-bottom: 12px;
     }
-    .hero-badge::before { content: ''; display: inline-block; width: 14px; height: 1px; background: var(--gold); }
+    .hero-badge::before { content: ''; display: inline-block; width: 14px; height: 1px; background: var(--accent); }
     .hero-title { font-family: var(--font-h); font-size: 1.6rem; font-weight: 900; line-height: 1.46; color: var(--navy-dark); margin-bottom: 12px; }
-    .hero-title a:hover { color: var(--gold); }
+    .hero-title a:hover { color: var(--accent); }
     .hero-summary { font-size: .89rem; color: var(--text-2); line-height: 1.86; border-top: 1px solid var(--border-lt); padding-top: 12px; }
     .hero-foot { display: flex; justify-content: space-between; margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--border-lt); font-size: .7rem; color: var(--muted); }
     .sub-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 14px; padding-top: 14px; border-top: 1px solid var(--border-lt); }
@@ -245,7 +255,7 @@
       line-height: 1.5; color: var(--navy-dark);
       transition: color var(--tr), border-color var(--tr), background var(--tr);
     }
-    .sub-art:hover { color: var(--gold); border-color: var(--gold); background: var(--gold-pale); }
+    .sub-art:hover { color: var(--accent-lt); border-color: var(--accent-lt); background: var(--steel-pale); }
     .sub-src { display: block; font-family: var(--font-b); font-size: .62rem; color: var(--muted-lt); font-weight: 400; margin-top: 3px; }
 
     /* ══ ニュースセクション ══════════════════════════════════════ */
@@ -270,7 +280,7 @@
       animation: fadeUp .3s ease both;
     }
     .art:last-child { border-bottom: none; }
-    .art:hover { background: var(--gold-pale); }
+    /* ホバー時は背景そのまま。タイトルのみ色変え */
     .art:nth-child(1){animation-delay:.03s}.art:nth-child(2){animation-delay:.06s}
     .art:nth-child(3){animation-delay:.09s}.art:nth-child(4){animation-delay:.12s}
     .art:nth-child(5){animation-delay:.15s}.art:nth-child(6){animation-delay:.18s}
@@ -286,7 +296,7 @@
       display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
       transition: color var(--tr);
     }
-    .art:hover .art-title { color: var(--gold); }
+    .art:hover .art-title { color: var(--accent-lt); text-decoration: underline; text-underline-offset: 3px; }
     .art-summary {
       font-size: .76rem; color: var(--muted); line-height: 1.72; margin-top: 3px;
       display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
@@ -310,27 +320,27 @@
     .sc-title { font-family: var(--font-h); font-size: .82rem; font-weight: 800; letter-spacing: .05em; }
 
     /* ══ きょうのことば ══════════════════════════════════════════ */
-    .kotoba { border-top: 3px solid var(--gold); }
-    .kotoba .sc-hd { background: var(--gold-pale); }
-    .kotoba .sc-title { color: #7a5e1a; }
+    .kotoba { border-top: 3px solid var(--steel); }
+    .kotoba .sc-hd { background: var(--steel-pale); }
+    .kotoba .sc-title { color: var(--navy); }
     .kotoba-body { padding: 16px 15px; }
     .kotoba-thumb {
       width: 100%; height: 116px; object-fit: cover;
       border-radius: 2px; margin-bottom: 13px; display: block;
-      background: #f0e8cf;
+      background: #d8eaf4;
     }
-    .kotoba-word { font-family: var(--font-h); font-size: 1.6rem; font-weight: 900; color: var(--gold); text-align: center; letter-spacing: .1em; margin-bottom: 4px; }
+    .kotoba-word { font-family: var(--font-h); font-size: 1.6rem; font-weight: 900; color: var(--navy-dark); text-align: center; letter-spacing: .1em; margin-bottom: 4px; }
     .kotoba-kana { font-size: .7rem; color: var(--muted); text-align: center; letter-spacing: .16em; margin-bottom: 2px; }
-    .kotoba-en { font-size: .7rem; font-weight: 700; color: var(--accent); text-align: center; margin-bottom: 11px; }
-    .kotoba-desc { font-size: .81rem; color: var(--text-2); line-height: 1.82; border-top: 1px solid rgba(184,147,42,.3); padding-top: 11px; }
+    .kotoba-en { font-size: .7rem; font-weight: 700; color: var(--steel); text-align: center; margin-bottom: 11px; }
+    .kotoba-desc { font-size: .81rem; color: var(--text-2); line-height: 1.82; border-top: 1px solid var(--border-lt); padding-top: 11px; }
     .kotoba-link {
       display: inline-flex; align-items: center; gap: 4px;
       margin-top: 10px; font-size: .67rem; font-weight: 700;
-      color: var(--gold); text-decoration: none;
-      border: 1px solid rgba(184,147,42,.5); border-radius: 2px;
+      color: var(--accent); text-decoration: none;
+      border: 1px solid rgba(30,77,140,.3); border-radius: 2px;
       padding: 3px 10px; transition: all var(--tr);
     }
-    .kotoba-link:hover { background: var(--gold); color: #fff; border-color: var(--gold); }
+    .kotoba-link:hover { background: var(--accent); color: #fff; border-color: var(--accent); }
 
     /* ══ 余白コラム ════════════════════════════════════════════ */
     .yoraku { border-top: 3px solid var(--green); }
@@ -362,21 +372,22 @@
     .shasetsu .sc-hd { background: #f6f8fb; }
     .shasetsu .sc-title { color: var(--navy); }
     .shasetsu-body { padding: 13px 15px; }
-    .shasetsu-badge { font-size: .58rem; font-weight: 800; color: var(--gold); letter-spacing: .12em; margin-bottom: 6px; }
+    .shasetsu-badge { font-size: .58rem; font-weight: 800; color: var(--navy); letter-spacing: .12em; margin-bottom: 6px; }
     .shasetsu-art {
       font-family: var(--font-h); font-size: .86rem; font-weight: 800;
       color: var(--navy-dark); line-height: 1.55; margin-bottom: 8px;
-      border-left: 2px solid var(--gold); padding-left: 8px;
+      border-left: 2px solid var(--navy); padding-left: 8px;
     }
-    .shasetsu-art a:hover { color: var(--gold); }
+    .shasetsu-art a:hover { color: var(--accent); }
     .shasetsu-sect { margin-top: 10px; }
     .shasetsu-label { font-family: var(--font-h); font-size: .58rem; font-weight: 800; color: var(--navy); letter-spacing: .1em; margin-bottom: 3px; }
     .shasetsu-text { font-size: .76rem; color: var(--muted); line-height: 1.78; }
     .shasetsu-src { font-size: .62rem; color: var(--muted-lt); text-align: right; margin-top: 8px; }
+    /* 論点の引用窓：shasetsuのネイビー系に統一 */
     .shasetsu-quote {
       font-size: .77rem; color: var(--text-2); line-height: 1.85;
-      border-left: 2px solid var(--gold); padding: 6px 10px;
-      margin: 8px 0; background: var(--gold-pale); border-radius: 0 2px 2px 0;
+      border-left: 2px solid var(--navy); padding: 6px 10px;
+      margin: 8px 0; background: rgba(14,27,47,.04); border-radius: 0 2px 2px 0;
       font-style: italic;
     }
     .shasetsu-expert { font-size: .62rem; color: var(--muted-lt); text-align: right; margin-top: 4px; font-style: normal; }
@@ -385,23 +396,23 @@
     .footer {
       background: var(--navy-bg); color: rgba(255,255,255,.28);
       padding: 28px 24px; margin-top: 48px; font-size: .68rem; text-align: center; line-height: 2.4;
-      border-top: 1px solid rgba(212,168,67,.15);
+      border-top: 1px solid rgba(255,255,255,.06);
     }
     .footer-rule {
       width: 60px; height: 1px;
-      background: rgba(212,168,67,.4);
+      background: rgba(255,255,255,.12);
       margin: 0 auto 14px;
     }
     .scroll-top {
       position: fixed; bottom: 28px; right: 24px; width: 38px; height: 38px;
-      background: var(--navy); color: var(--gold-bright); border: 1px solid rgba(212,168,67,.4);
+      background: var(--navy); color: rgba(255,255,255,.8); border: 1px solid rgba(255,255,255,.15);
       cursor: pointer; font-size: .9rem;
       box-shadow: var(--shadow-md); opacity: 0; transform: translateY(10px);
       pointer-events: none; z-index: 500; border-radius: 2px;
       transition: background var(--tr), transform var(--tr), opacity var(--tr);
     }
     .scroll-top.visible { opacity: 1; transform: translateY(0); pointer-events: auto; }
-    .scroll-top:hover { background: var(--gold); color: #fff; transform: translateY(-2px); }
+    .scroll-top:hover { background: var(--accent); color: #fff; transform: translateY(-2px); }
 
     /* ══ Responsive ════════════════════════════════════════════ */
     @media(max-width:900px){
@@ -445,6 +456,8 @@
   </style>
 </head>
 <body>
+<!-- 読み進みバー -->
+<div class="progress-bar" id="progress-bar"></div>
 
 <!-- ══ マストヘッド ══════════════════════════════════════════════ -->
 <header class="masthead">
@@ -681,7 +694,9 @@
               <p class="yoraku-text">{{ shunshuu.article.summary[:130] }}</p>
             {% endif %}
             <p class="yoraku-closer">{{ shunshuu.closer }}</p>
-            <div class="yoraku-byline">── {{ shunshuu.article.source }}</div>
+            {% if shunshuu.closer_attr %}
+              <div class="yoraku-byline">── {{ shunshuu.closer_attr }}</div>
+            {% endif %}
           </div>
         </div>
       {% endif %}
@@ -752,6 +767,16 @@
 <button class="scroll-top" id="scroll-top-btn" aria-label="ページトップへ戻る">↑</button>
 
 <script>
+  /* ── 読み進みバー ── */
+  (function() {
+    const bar = document.getElementById('progress-bar');
+    if (!bar) return;
+    window.addEventListener('scroll', function() {
+      const total = document.body.scrollHeight - window.innerHeight;
+      bar.style.width = (total > 0 ? (window.scrollY / total) * 100 : 0) + '%';
+    }, { passive: true });
+  })();
+
   /* ── ナビ平滑スクロール ── */
   document.querySelectorAll('.mh-nav a').forEach(a => {
     a.addEventListener('click', e => {
