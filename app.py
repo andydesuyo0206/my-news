@@ -7,8 +7,10 @@ import re
 import time
 import os
 import json
+import threading
 import urllib.request
 import urllib.parse
+from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timezone
 from zoneinfo import ZoneInfo
 from flask import Flask, render_template, redirect
@@ -210,6 +212,83 @@ def extract_keyword(title: str) -> str:
     return s[:25].strip()
 
 
+# ─── OGP 画像取得（バックグラウンド・非ブロッキング） ─────────────────
+# 設計：ページ表示をブロックせず、バックグラウンドスレッドで og:image を取得・キャッシュ。
+# 次のリクエスト時にキャッシュから補完して表示する。最大6並列・URL上限2000件。
+
+_ogp_cache:    dict = {}   # URL → image URL（''は取得済み・画像なし）
+_ogp_lock              = threading.Lock()
+_ogp_executor          = ThreadPoolExecutor(max_workers=6, thread_name_prefix='ogp')
+
+# og:image / twitter:image の抽出パターン（属性順不問）
+_OGP_RE = [
+    re.compile(r'<meta[^>]+property=["\']og:image["\'][^>]+content=["\']([^"\']+)["\']', re.I),
+    re.compile(r'<meta[^>]+content=["\']([^"\']+)["\'][^>]+property=["\']og:image["\']', re.I),
+    re.compile(r'<meta[^>]+name=["\']twitter:image["\'][^>]+content=["\']([^"\']+)["\']', re.I),
+    re.compile(r'<meta[^>]+content=["\']([^"\']+)["\'][^>]+name=["\']twitter:image["\']', re.I),
+]
+
+
+def _fetch_ogp(url: str) -> None:
+    """バックグラウンドで og:image を取得してキャッシュに保存（ページ表示をブロックしない）"""
+    # 取得済みチェック（二重取得防止）
+    with _ogp_lock:
+        if url in _ogp_cache:
+            return
+        _ogp_cache[url] = ''   # 処理中マーク（他スレッドの重複起動を防ぐ）
+
+    img = ''
+    try:
+        req = urllib.request.Request(
+            url,
+            headers={
+                'User-Agent': 'Mozilla/5.0 (compatible; MaiChokan/1.0; +https://my-news.onrender.com)',
+                'Accept':          'text/html,application/xhtml+xml',
+                'Accept-Language': 'ja,en;q=0.8',
+            }
+        )
+        # 最初の 16 KB だけ取得（<head> 内の og:image はほぼここに収まる）
+        with urllib.request.urlopen(req, timeout=4) as resp:
+            raw = resp.read(16384)
+        html = raw.decode('utf-8', errors='replace')
+        for pat in _OGP_RE:
+            m = pat.search(html)
+            if m:
+                img = m.group(1).strip()
+                break
+    except Exception as e:
+        print(f'[WARN] OGP fetch 失敗: {url[:70]} → {e}')
+
+    with _ogp_lock:
+        # キャッシュ上限：2000件超えたら古い200件を削除（簡易 FIFO）
+        if len(_ogp_cache) > 2000:
+            for k in list(_ogp_cache.keys())[:200]:
+                del _ogp_cache[k]
+        _ogp_cache[url] = img
+
+    if img:
+        print(f'[DEBUG] OGP取得: {img[:80]}')
+
+
+def _prefetch_ogp(news: dict) -> None:
+    """news キャッシュ内の「画像なし記事」を一括で OGP プリフェッチ（バックグラウンド呼び出し用）"""
+    count = 0
+    for articles in news.values():
+        for art in articles:
+            link = art.get('link', '')
+            if not link or link == '#' or art.get('image'):
+                continue
+            with _ogp_lock:
+                if link in _ogp_cache:
+                    continue
+            _ogp_executor.submit(_fetch_ogp, link)
+            count += 1
+            if count >= 40:   # 1キャッシュサイクルあたり最大 40 件
+                print(f'[DEBUG] OGP プリフェッチ: {count}件 起動（上限到達）')
+                return
+    print(f'[DEBUG] OGP プリフェッチ: {count}件 起動')
+
+
 # ─── RSSエントリ画像取得 ──────────────────────────────────────────
 
 def get_entry_image(entry) -> str:
@@ -325,6 +404,8 @@ def get_all_news() -> dict:
         result[category] = interleave(per_source)
     _cache = result
     _cache_ts = time.time()
+    # RSSに画像がない記事の og:image をバックグラウンドで非同期取得（ページ表示をブロックしない）
+    threading.Thread(target=_prefetch_ogp, args=(result,), daemon=True).start()
     return result
 
 
@@ -1848,13 +1929,27 @@ def get_kotoba() -> dict:
 def index():
     news      = get_all_news()
     now       = datetime.now(JST)
-    s_pool    = news.get('政治', []) + news.get('経済', [])
+
+    # OGP キャッシュから画像を補完（画像がない記事にバックグラウンド取得結果を適用）
+    # 元の _cache は変更せず、リクエストごとにシャローコピーでマージ
+    news_enriched: dict = {}
+    for cat, articles in news.items():
+        enriched = []
+        for art in articles:
+            if not art.get('image'):
+                ogp = _ogp_cache.get(art.get('link', ''), '')  # GILにより読み取りはスレッドセーフ
+                if ogp:
+                    art = {**art, 'image': ogp}   # シャローコピー（元 dict は不変）
+            enriched.append(art)
+        news_enriched[cat] = enriched
+
+    s_pool    = news_enriched.get('政治', []) + news_enriched.get('経済', [])
     s_article = s_pool[0] if s_pool else None
     # 全 AI コンテンツを 1API コールで生成（5コール→1コール、2時間キャッシュ）
     ai = _refresh_ai_batch(news, s_article)
     return render_template(
         'index.html',
-        news=news,
+        news=news_enriched,
         kotoba=get_kotoba(),
         shunshuu=get_shunshuu(news),
         now=now,
@@ -1876,7 +1971,8 @@ def refresh():
     _ai_comment_cache.clear()
     _ai_batch_cache.clear()
     _ai_batch_ts = 0.0
-    get_all_news()
+    # OGP キャッシュはクリアしない（再利用してスレッド節約）
+    get_all_news()   # ← 内部で OGP プリフェッチも起動される
     return redirect('/')
 
 
