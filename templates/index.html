@@ -375,7 +375,13 @@
     .shasetsu-sect { margin-top: 10px; }
     .shasetsu-label { font-family: var(--font-h); font-size: .58rem; font-weight: 800; color: var(--navy); letter-spacing: .1em; margin-bottom: 3px; }
     .shasetsu-text { font-size: .76rem; color: var(--muted); line-height: 1.78; }
-    .shasetsu-src { font-size: .62rem; color: var(--muted-lt); text-align: right; margin-top: 8px; }
+    .shasetsu-more {
+      display: inline; margin-left: 3px;
+      font-size: .72rem; font-weight: 700; color: var(--accent);
+      border-bottom: 1px solid rgba(30,77,140,.3);
+      transition: color var(--tr), border-color var(--tr);
+    }
+    .shasetsu-more:hover { color: var(--accent-lt); border-bottom-color: var(--accent-lt); }
     /* 論点の引用窓：shasetsuのネイビー系に統一 */
     .shasetsu-quote {
       font-size: .77rem; color: var(--text-2); line-height: 1.85;
@@ -397,15 +403,26 @@
       margin: 0 auto 14px;
     }
     .scroll-top {
-      position: fixed; bottom: 28px; right: 24px; width: 38px; height: 38px;
+      position: fixed; bottom: 28px; right: 24px; height: 38px;
+      display: flex; align-items: center; gap: 6px;
+      padding: 0 11px;
+      max-width: 38px; overflow: hidden;
       background: var(--navy); color: rgba(255,255,255,.8); border: 1px solid rgba(255,255,255,.15);
-      cursor: pointer; font-size: .9rem;
+      cursor: pointer;
       box-shadow: var(--shadow-md); opacity: 0; transform: translateY(10px);
       pointer-events: none; z-index: 500; border-radius: 2px;
-      transition: background var(--tr), transform var(--tr), opacity var(--tr);
+      transition: max-width .28s cubic-bezier(.4,0,.2,1),
+                  background var(--tr), transform var(--tr), opacity var(--tr);
     }
     .scroll-top.visible { opacity: 1; transform: translateY(0); pointer-events: auto; }
-    .scroll-top:hover { background: var(--accent); color: #fff; transform: translateY(-2px); }
+    .scroll-top:hover { background: var(--accent); color: #fff; transform: translateY(-2px); max-width: 200px; }
+    .scroll-top-icon { flex-shrink: 0; font-size: .9rem; line-height: 1; }
+    .scroll-top-label {
+      font-family: var(--font-h); font-size: .62rem; font-weight: 700;
+      letter-spacing: .04em; white-space: nowrap;
+      opacity: 0; transition: opacity .12s .1s;
+    }
+    .scroll-top:hover .scroll-top-label { opacity: 1; }
 
     /* ══ Responsive ════════════════════════════════════════════ */
     @media(max-width:900px){
@@ -707,7 +724,9 @@
             {% if s.summary %}
               <div class="shasetsu-sect">
                 <div class="shasetsu-label">◆ 論点</div>
-                <div class="shasetsu-text">{{ s.summary[:100] }}</div>
+                <div class="shasetsu-text">
+                  {{ s.summary[:100] }}{% if s.summary|length > 100 %}…<a class="shasetsu-more" href="{{ s.link }}" target="_blank" rel="noopener">続きを読む</a>{% endif %}
+                </div>
               </div>
             {% endif %}
             {% if shasetsu_comment %}
@@ -721,7 +740,6 @@
                 <div class="shasetsu-text">この問題が今後の政策・市場に与える影響を引き続き注視したい。</div>
               </div>
             {% endif %}
-            <div class="shasetsu-src">── {{ s.source }}</div>
           </div>
         </div>
       {% endif %}
@@ -755,7 +773,10 @@
   <div>朝凪（あさなぎ）— 朝日・毎日・Reuters・NYT・BBC・東洋経済 等の公開RSSを集約</div>
   <div>各記事の著作権は配信元に帰属します。ニュースは30分ごとキャッシュ。</div>
 </footer>
-<button class="scroll-top" id="scroll-top-btn" aria-label="ページトップへ戻る">↑</button>
+<button class="scroll-top" id="scroll-top-btn" aria-label="ページトップへ戻る">
+  <span class="scroll-top-icon">↑</span>
+  <span class="scroll-top-label">ページの一番上に戻る</span>
+</button>
 
 <script>
   /* ── ナビ平滑スクロール ── */
