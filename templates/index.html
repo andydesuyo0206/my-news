@@ -127,6 +127,18 @@
       transition: color var(--tr), border-color var(--tr);
     }
     .mh-nav a:hover { color: #fff; border-bottom-color: var(--steel); }
+    /* スクロールスパイ：現在表示中のセクションをハイライト */
+    .mh-nav a.active { color: #fff; border-bottom-color: var(--accent-lt); }
+
+    /* コンパクトヘッダー：スクロール時にロゴ行を折りたたむ */
+    .mh-top {
+      transition: max-height .28s ease, padding .28s ease, opacity .2s ease, border-color .28s ease;
+      max-height: 120px; overflow: hidden;
+    }
+    .masthead.compact .mh-top {
+      max-height: 0; padding-top: 0; padding-bottom: 0; opacity: 0;
+      pointer-events: none; border-bottom-color: transparent;
+    }
 
     /* ══ レイアウト ══════════════════════════════════════════════ */
     .page { max-width: 1280px; margin: 0 auto; padding: 24px 24px 60px; }
@@ -175,22 +187,23 @@
       gap: 1px; background: var(--border-lt);
     }
     .ov-card {
-      background: var(--card); padding: 12px 13px;
+      background: var(--card); padding: 14px 15px;
       cursor: pointer; transition: background var(--tr);
+      display: flex; flex-direction: column;
     }
     /* ov-card ホバー：背景変化なし。タイトル色のみ */
     .ov-card-cat {
       font-family: var(--font-h); font-size: .58rem; font-weight: 800;
-      letter-spacing: .1em; margin-bottom: 6px;
+      letter-spacing: .1em; margin-bottom: 7px;
     }
     .ov-card-title {
-      font-family: var(--font-h); font-size: .8rem; font-weight: 700;
-      color: var(--navy-dark); line-height: 1.55;
-      display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden;
-      transition: color var(--tr);
+      font-family: var(--font-h); font-size: .78rem; font-weight: 700;
+      color: var(--navy-dark); line-height: 1.62;
+      display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+      transition: color var(--tr); flex: 1;
     }
     .ov-card:hover .ov-card-title { color: var(--accent); }
-    .ov-card-src { font-size: .58rem; color: var(--muted-lt); margin-top: 5px; }
+    .ov-card-src { font-size: .58rem; color: var(--muted-lt); margin-top: 8px; }
     @media(max-width:900px){ .overview-grid { grid-template-columns: repeat(2,1fr); } }
     @media(max-width:640px){ .overview-grid { grid-template-columns: 1fr; } }
 
@@ -517,11 +530,8 @@
             <span class="ov-badge ov-badge-ai">✦ AIによる分析</span>
             {% if news_overview.source in ['gemini', 'gemini_cached'] %}
               <span class="ov-badge ov-badge-gemini">● Gemini{% if news_overview.source == 'gemini_cached' %}キャッシュ{% endif %}</span>
-            {% elif news_overview.source == 'template_api_error' %}
-              <span class="ov-badge ov-badge-tmpl">⚠ API失敗</span>
-            {% else %}
-              <span class="ov-badge ov-badge-tmpl">⚠ キー未設定</span>
             {% endif %}
+            {# API失敗・キー未設定時はバッジ非表示（ユーザーに不安を与えないため）#}
           </div>
         </div>
         {% if news_overview.themes %}
@@ -787,14 +797,44 @@
     });
   });
 
-  /* ── スクロールトップボタン ── */
+  /* ── スクロールトップ + コンパクトヘッダー ── */
   const scrollTopBtn = document.getElementById('scroll-top-btn');
+  const mastheadEl   = document.querySelector('.masthead');
   window.addEventListener('scroll', () => {
-    scrollTopBtn.classList.toggle('visible', scrollY > 400);
+    const sy = window.scrollY;
+    scrollTopBtn.classList.toggle('visible', sy > 400);
+    // ロゴ行を折りたたんでナビのみ表示（省スペース）
+    mastheadEl.classList.toggle('compact', sy > 90);
   }, { passive: true });
   scrollTopBtn.addEventListener('click', () => {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   });
+
+  /* ── スクロールスパイ：現在のセクションをナビでハイライト ── */
+  (function () {
+    const navLinks = Array.from(document.querySelectorAll('.mh-nav a'));
+    const sections = navLinks.map(a => {
+      const id = a.getAttribute('href').replace('#', '');
+      return document.getElementById(id);
+    }).filter(Boolean);
+
+    if (!sections.length) return;
+
+    const spy = new IntersectionObserver(entries => {
+      entries.forEach(entry => {
+        if (!entry.isIntersecting) return;
+        const id = '#' + entry.target.id;
+        navLinks.forEach(a => {
+          a.classList.toggle('active', a.getAttribute('href') === id);
+        });
+      });
+    }, {
+      rootMargin: '-10% 0px -80% 0px',  // セクション上端が画面上部10%に来たら発火
+      threshold: 0,
+    });
+
+    sections.forEach(s => spy.observe(s));
+  })();
 
   /* ── プログレッシブスティッキーサイドバー ──────────────────────
      サイドバーが画面より長い場合、ページスクロールに連動して

@@ -203,13 +203,68 @@ def get_pixabay_image(query: str) -> str:
         return ''
 
 
-def extract_keyword(title: str) -> str:
-    """記事タイトルから Pixabay 検索用キーワードを抽出する"""
-    # カッコ・記号を空白に変換
-    s = re.sub(r'[【】〔〕「」『』（）()\[\]《》]', ' ', title)
-    s = re.sub(r'[！？!?、。・〜～…＝=＋+\-]', ' ', s)
-    s = re.sub(r'\s+', ' ', s).strip()
-    return s[:25].strip()
+# 日英変換マップ（頻出ニュースキーワード → 英語で Pixabay 精度向上）
+_JP_EN: list[tuple[str, str]] = [
+    ('地震', 'earthquake Japan'), ('台風', 'typhoon storm Japan'),
+    ('災害', 'natural disaster'), ('洪水', 'flood disaster'),
+    ('核', 'nuclear'), ('ミサイル', 'missile military'),
+    ('漁業', 'fishing ocean'), ('農業', 'agriculture farm'),
+    ('半導体', 'semiconductor chip technology'), ('AI', 'artificial intelligence technology'),
+    ('人工知能', 'artificial intelligence'), ('量子', 'quantum technology'),
+    ('宇宙', 'space universe'), ('ロケット', 'rocket launch'),
+    ('株式', 'stock market finance'), ('株価', 'stock market charts'),
+    ('円', 'Japanese yen currency exchange'), ('インフレ', 'inflation economy'),
+    ('物価', 'prices shopping economy'), ('金利', 'interest rate finance'),
+    ('銀行', 'bank finance'), ('貿易', 'trade international business'),
+    ('企業', 'business company office'), ('工場', 'factory manufacturing'),
+    ('電力', 'electricity power energy'), ('再生可能', 'renewable energy solar wind'),
+    ('選挙', 'election voting democracy'), ('国会', 'parliament government'),
+    ('外交', 'diplomacy international relations'), ('首脳', 'leaders summit diplomacy'),
+    ('防衛', 'defense military'), ('安全保障', 'national security'),
+    ('ロシア', 'Russia'), ('ウクライナ', 'Ukraine'), ('中国', 'China'),
+    ('アメリカ', 'United States'), ('韓国', 'South Korea'), ('北朝鮮', 'North Korea'),
+    ('医療', 'healthcare medicine hospital'), ('病院', 'hospital medical'),
+    ('ワクチン', 'vaccine healthcare'), ('感染', 'infection virus disease'),
+    ('教育', 'education school learning'), ('子ども', 'children school'),
+    ('少子化', 'birth rate population Japan'), ('高齢', 'elderly aging Japan'),
+    ('環境', 'environment nature green'), ('気候', 'climate change environment'),
+    ('野球', 'baseball sport'), ('サッカー', 'soccer football sport'),
+    ('スポーツ', 'sports athlete'), ('五輪', 'Olympics sports'),
+    ('映画', 'cinema film movie'), ('音楽', 'music concert'),
+    ('科学', 'science research laboratory'), ('宇宙', 'space astronomy'),
+]
+
+# カテゴリ別デフォルト検索語（マッチなしの最終フォールバック）
+_CAT_DEFAULT: dict[str, str] = {
+    '経済':     'Japan economy business finance',
+    '政治':     'Japan politics government',
+    '国際':     'world international diplomacy',
+    'IT・テック': 'technology digital innovation',
+    '文化・科学': 'Japan culture science',
+    '国内・社会': 'Japan society people city',
+    '主要':     'Japan news',
+}
+
+
+def extract_keyword(title: str, category: str = '') -> str:
+    """記事タイトルから Pixabay 検索用キーワードを抽出（英語変換で精度向上）"""
+    # 日英変換マップで最大2語を英語に変換
+    en_parts: list[str] = []
+    for jp, en in _JP_EN:
+        if jp in title:
+            en_parts.append(en)
+            if len(en_parts) >= 2:
+                break
+    if en_parts:
+        return ' '.join(en_parts)
+
+    # 変換できなければカテゴリ別デフォルト
+    if category in _CAT_DEFAULT:
+        return _CAT_DEFAULT[category]
+
+    # 最終フォールバック：記号除去した先頭20文字
+    s = re.sub(r'[【】〔〕「」『』（）()\[\]《》！？!?、。・〜～…＝=＋+\-]', ' ', title)
+    return re.sub(r'\s+', ' ', s).strip()[:20]
 
 
 # ─── OGP 画像取得（バックグラウンド・非ブロッキング） ─────────────────
@@ -227,6 +282,12 @@ _OGP_RE = [
     re.compile(r'<meta[^>]+name=["\']twitter:image["\'][^>]+content=["\']([^"\']+)["\']', re.I),
     re.compile(r'<meta[^>]+content=["\']([^"\']+)["\'][^>]+name=["\']twitter:image["\']', re.I),
 ]
+# og:image:width 抽出（小さすぎるアイコン画像をフィルタリング）
+_OGP_WIDTH_RE = [
+    re.compile(r'<meta[^>]+property=["\']og:image:width["\'][^>]+content=["\'](\d+)["\']', re.I),
+    re.compile(r'<meta[^>]+content=["\'](\d+)["\'][^>]+property=["\']og:image:width["\']', re.I),
+]
+_OGP_MIN_WIDTH = 200   # これ未満のピクセル幅は除外（アイコン・サムネイル等）
 
 
 def _fetch_ogp(url: str) -> None:
@@ -256,6 +317,19 @@ def _fetch_ogp(url: str) -> None:
             if m:
                 img = m.group(1).strip()
                 break
+        # og:image:width が取得できた場合、小さすぎる画像（アイコン等）を除外
+        if img:
+            for wp in _OGP_WIDTH_RE:
+                wm = wp.search(html)
+                if wm:
+                    try:
+                        w = int(wm.group(1))
+                        if w < _OGP_MIN_WIDTH:
+                            print(f'[DEBUG] OGP 画像が小さすぎるためスキップ: width={w}px {url[:60]}')
+                            img = ''
+                    except ValueError:
+                        pass
+                    break
     except Exception as e:
         print(f'[WARN] OGP fetch 失敗: {url[:70]} → {e}')
 
@@ -357,7 +431,7 @@ def fmt_published(entry) -> str:
     return entry.get('published', '')
 
 
-def fetch_feed(source: str, url: str) -> list:
+def fetch_feed(source: str, url: str, category: str = '') -> list:
     try:
         feed = feedparser.parse(url)
         articles = []
@@ -366,9 +440,9 @@ def fetch_feed(source: str, url: str) -> list:
             summary = strip_html(raw)
             title   = entry.get('title', '（タイトルなし）')
             image   = get_entry_image(entry)
-            # RSS に画像がなければ Pixabay でフォールバック
+            # RSS に画像がなければ Pixabay でフォールバック（カテゴリ情報で精度向上）
             if not image and PIXABAY_KEY:
-                image = get_pixabay_image(extract_keyword(title))
+                image = get_pixabay_image(extract_keyword(title, category))
             articles.append({
                 'title':     title,
                 'link':      entry.get('link', '#'),
@@ -400,7 +474,7 @@ def get_all_news() -> dict:
         return _cache
     result = {}
     for category, sources in FEEDS.items():
-        per_source = [fetch_feed(src, url) for src, url in sources]
+        per_source = [fetch_feed(src, url, category) for src, url in sources]
         result[category] = interleave(per_source)
     _cache = result
     _cache_ts = time.time()
