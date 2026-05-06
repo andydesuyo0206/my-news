@@ -37,14 +37,6 @@
       --radius:      4px;
       --tr:          .2s cubic-bezier(.4,0,.2,1);
     }
-    /* ── 読み進みバー ── */
-    .progress-bar {
-      position: fixed; top: 0; left: 0; z-index: 3000;
-      height: 2px; width: 0%;
-      background: var(--accent-lt);
-      transition: width .08s linear;
-      pointer-events: none;
-    }
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
     html { font-size: 16px; scroll-behavior: smooth; }
     body { font-family: var(--font-b); background: var(--bg); color: var(--text); line-height: 1.78; letter-spacing: .02em; overflow-x: hidden; }
@@ -57,12 +49,12 @@
       background: var(--navy-bg);
       border-bottom: 1px solid rgba(255,255,255,.06);
     }
-    /* シルバーラインを最上部に（ゴールドなし） */
+    /* アクセントカラーライン（マストヘッド最上部） */
     .masthead::before {
       content: '';
       display: block;
-      height: 1px;
-      background: linear-gradient(90deg, transparent 0%, rgba(255,255,255,.18) 25%, rgba(255,255,255,.18) 75%, transparent 100%);
+      height: 2px;
+      background: linear-gradient(90deg, var(--navy-bg) 0%, var(--steel) 20%, var(--accent-lt) 50%, var(--steel) 80%, var(--navy-bg) 100%);
     }
     .mh-inner { max-width: 1280px; margin: 0 auto; }
 
@@ -81,13 +73,13 @@
     }
     .mh-today {
       font-size: .63rem; letter-spacing: .02em;
-      color: rgba(255,255,255,.55);
+      color: rgba(255,255,255,.72);
     }
     .mh-today-link {
-      color: rgba(255,255,255,.65); text-decoration: underline dotted;
+      color: #9ec8e8; text-decoration: underline dotted; text-underline-offset: 2px;
       transition: color var(--tr);
     }
-    .mh-today-link:hover { color: #fff; }
+    .mh-today-link:hover { color: #cce4f5; }
     /* ロゴ：Playfair Display で高級感 */
     .mh-logo {
       font-family: var(--font-disp); font-size: 2.1rem; font-weight: 800;
@@ -186,7 +178,7 @@
       background: var(--card); padding: 12px 13px;
       cursor: pointer; transition: background var(--tr);
     }
-    .ov-card:hover { background: var(--steel-pale); }
+    /* ov-card ホバー：背景変化なし。タイトル色のみ */
     .ov-card-cat {
       font-family: var(--font-h); font-size: .58rem; font-weight: 800;
       letter-spacing: .1em; margin-bottom: 6px;
@@ -296,7 +288,8 @@
       display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
       transition: color var(--tr);
     }
-    .art:hover .art-title { color: var(--accent-lt); text-decoration: underline; text-underline-offset: 3px; }
+    /* 記事タイトルのホバー：下線なし、やや暗いブルーに */
+    .art:hover .art-title { color: var(--accent); }
     .art-summary {
       font-size: .76rem; color: var(--muted); line-height: 1.72; margin-top: 3px;
       display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
@@ -456,8 +449,6 @@
   </style>
 </head>
 <body>
-<!-- 読み進みバー -->
-<div class="progress-bar" id="progress-bar"></div>
 
 <!-- ══ マストヘッド ══════════════════════════════════════════════ -->
 <header class="masthead">
@@ -767,16 +758,6 @@
 <button class="scroll-top" id="scroll-top-btn" aria-label="ページトップへ戻る">↑</button>
 
 <script>
-  /* ── 読み進みバー ── */
-  (function() {
-    const bar = document.getElementById('progress-bar');
-    if (!bar) return;
-    window.addEventListener('scroll', function() {
-      const total = document.body.scrollHeight - window.innerHeight;
-      bar.style.width = (total > 0 ? (window.scrollY / total) * 100 : 0) + '%';
-    }, { passive: true });
-  })();
-
   /* ── ナビ平滑スクロール ── */
   document.querySelectorAll('.mh-nav a').forEach(a => {
     a.addEventListener('click', e => {
