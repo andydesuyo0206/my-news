@@ -595,8 +595,12 @@
         -webkit-tap-highlight-color: transparent;
       }
       .mbn-item.active { color: #fff; }
+      .mbn-item.active .mbn-icon { transform: scale(1.15); }
       .mbn-item:active { opacity: .7; }
-      .mbn-icon { font-size: 1.15rem; line-height: 1; margin-bottom: 3px; display: block; }
+      .mbn-icon {
+        font-size: 1.15rem; line-height: 1; margin-bottom: 3px; display: block;
+        transition: transform .15s ease;
+      }
     }
     @media print {
       *{animation:none!important;transition:none!important;box-shadow:none!important;}
@@ -1007,8 +1011,10 @@
 <!-- ══ フッター ══════════════════════════════════════════════════ -->
 <footer class="footer">
   <div class="footer-rule"></div>
-  <div>朝凪（あさなぎ）— 朝日・毎日・Reuters・NYT・BBC・東洋経済 等の公開RSSを集約</div>
-  <div>各記事の著作権は配信元に帰属します。ニュースは30分ごとキャッシュ。</div>
+  <div><strong style="color:rgba(255,255,255,.5);letter-spacing:.2em;">朝凪</strong></div>
+  <div>朝日・毎日・NHK・Reuters・BBC・東洋経済 等の公開RSSを集約するパーソナル朝刊ダッシュボード</div>
+  <div>各記事の著作権は配信元に帰属します。ニュースは30分ごとキャッシュ・AIコメントは2時間ごと更新。</div>
+  <div style="margin-top:8px;opacity:.5;">Powered by Flask × Gemini 2.0 Flash × Pixabay / Render.com</div>
 </footer>
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
 <button class="scroll-top" id="scroll-top-btn" aria-label="ページトップへ戻る">
