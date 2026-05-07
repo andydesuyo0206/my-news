@@ -2352,6 +2352,29 @@ def refresh():
     return redirect('/?refreshed=1')
 
 
+@app.route('/health')
+def health():
+    """ヘルスチェックエンドポイント（UptimeRobot / Render等の監視用）"""
+    from flask import jsonify
+    cache_age = int(time.time() - _cache_ts) if _cache_ts else -1
+    return jsonify({
+        'status': 'ok',
+        'cache_age_sec': cache_age,
+        'cache_valid': cache_age >= 0 and cache_age < CACHE_TTL,
+    })
+
+
+@app.errorhandler(404)
+def not_found(e):
+    return redirect('/')
+
+
+@app.errorhandler(500)
+def internal_error(e):
+    print(f'[ERROR] 500 Internal Server Error: {e}')
+    return redirect('/')
+
+
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))
     print('=' * 52)
