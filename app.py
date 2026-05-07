@@ -20,6 +20,20 @@ JST = ZoneInfo('Asia/Tokyo')
 
 app = Flask(__name__)
 
+
+@app.after_request
+def add_security_headers(resp):
+    """セキュリティヘッダーを全レスポンスに付与"""
+    resp.headers['X-Content-Type-Options']  = 'nosniff'
+    resp.headers['X-Frame-Options']         = 'SAMEORIGIN'
+    resp.headers['Referrer-Policy']         = 'strict-origin-when-cross-origin'
+    resp.headers['Permissions-Policy']      = 'geolocation=(), microphone=()'
+    # Cache-Control: HTML は short TTL、他は任せる
+    if 'text/html' in resp.content_type:
+        resp.headers['Cache-Control'] = 'no-cache, max-age=0'
+    return resp
+
+
 # ─── 健司選定 RSSフィード（NHKは各カテゴリ末尾に配置し偏りを抑制） ──
 
 FEEDS = {
