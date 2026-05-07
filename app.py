@@ -3,6 +3,7 @@
 健司選定フィード / さくら設計UI / 悠翔設計コンテンツ
 """
 import feedparser
+import gc
 import re
 import time
 import os
@@ -67,12 +68,10 @@ FEEDS = {
         ('NHK文化',      'https://www3.nhk.or.jp/rss/news/cat2.xml'),
     ],
     '国内・社会': [
-        ('朝日新聞',      'https://www.asahi.com/rss/asahi/newsheadlines.rdf'),
-        ('47NEWS',        'https://www.47news.jp/articles.rss'),
-        ('毎日新聞 社会', 'https://mainichi.jp/rss/etc/mainichi-flash.rss'),
+        # 注：朝日・47NEWS・毎日は「主要」と重複のため除外（メモリ節約）
         ('Yahoo! 国内',   'https://news.yahoo.co.jp/rss/topics/domestic.xml'),
         ('財経新聞 社会', 'https://www.zaikei.co.jp/rss/social.rdf'),
-        ('NHK社会',       'https://www3.nhk.or.jp/rss/news/cat1.xml'),   # 末尾
+        ('NHK社会',       'https://www3.nhk.or.jp/rss/news/cat1.xml'),
     ],
 }
 
@@ -273,7 +272,7 @@ def extract_keyword(title: str, category: str = '') -> str:
 
 _ogp_cache:    dict = {}   # URL → image URL（''は取得済み・画像なし）
 _ogp_lock              = threading.Lock()
-_ogp_executor          = ThreadPoolExecutor(max_workers=6, thread_name_prefix='ogp')
+_ogp_executor          = ThreadPoolExecutor(max_workers=2, thread_name_prefix='ogp')  # メモリ節約のため2に制限
 
 # og:image / twitter:image の抽出パターン（属性順不問）
 _OGP_RE = [
@@ -287,7 +286,9 @@ _OGP_WIDTH_RE = [
     re.compile(r'<meta[^>]+property=["\']og:image:width["\'][^>]+content=["\'](\d+)["\']', re.I),
     re.compile(r'<meta[^>]+content=["\'](\d+)["\'][^>]+property=["\']og:image:width["\']', re.I),
 ]
-_OGP_MIN_WIDTH = 200   # これ未満のピクセル幅は除外（アイコン・サムネイル等）
+_OGP_MIN_WIDTH  = 200   # これ未満のピクセル幅は除外（アイコン・サムネイル等）
+_OGP_CACHE_MAX  = 500   # キャッシュ上限（メモリ節約のため2000→500）
+_OGP_CACHE_DROP = 100   # 上限超過時に削除する件数
 
 
 def _fetch_ogp(url: str) -> None:
@@ -334,9 +335,9 @@ def _fetch_ogp(url: str) -> None:
         print(f'[WARN] OGP fetch 失敗: {url[:70]} → {e}')
 
     with _ogp_lock:
-        # キャッシュ上限：2000件超えたら古い200件を削除（簡易 FIFO）
-        if len(_ogp_cache) > 2000:
-            for k in list(_ogp_cache.keys())[:200]:
+        # キャッシュ上限：超えたら古い件を削除（簡易 FIFO）
+        if len(_ogp_cache) > _OGP_CACHE_MAX:
+            for k in list(_ogp_cache.keys())[:_OGP_CACHE_DROP]:
                 del _ogp_cache[k]
         _ogp_cache[url] = img
 
@@ -357,7 +358,7 @@ def _prefetch_ogp(news: dict) -> None:
                     continue
             _ogp_executor.submit(_fetch_ogp, link)
             count += 1
-            if count >= 40:   # 1キャッシュサイクルあたり最大 40 件
+            if count >= 15:   # メモリ節約のため最大15件に制限（旧40件）
                 print(f'[DEBUG] OGP プリフェッチ: {count}件 起動（上限到達）')
                 return
     print(f'[DEBUG] OGP プリフェッチ: {count}件 起動')
@@ -435,7 +436,7 @@ def fetch_feed(source: str, url: str, category: str = '') -> list:
     try:
         feed = feedparser.parse(url)
         articles = []
-        for entry in feed.entries[:8]:
+        for entry in feed.entries[:6]:  # メモリ節約のため8→6に削減
             raw     = entry.get('summary', entry.get('description', ''))
             summary = strip_html(raw)
             title   = entry.get('title', '（タイトルなし）')
@@ -480,6 +481,8 @@ def get_all_news() -> dict:
     _cache_ts = time.time()
     # RSSに画像がない記事の og:image をバックグラウンドで非同期取得（ページ表示をブロックしない）
     threading.Thread(target=_prefetch_ogp, args=(result,), daemon=True).start()
+    gc.collect()   # キャッシュ更新後に不要オブジェクトを明示的に回収
+    print('[DEBUG] get_all_news: GC実行完了')
     return result
 
 
