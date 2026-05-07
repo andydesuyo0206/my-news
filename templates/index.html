@@ -437,6 +437,42 @@
     }
     .shasetsu-expert { font-size: .62rem; color: var(--muted-lt); text-align: right; margin-top: 4px; font-style: normal; }
 
+    /* ══ 今日の記念日ウィジェット ════════════════════════════════ */
+    .kinenbi { border-top: 3px solid var(--teal); }
+    .kinenbi .sc-hd { background: var(--teal-pale); }
+    .kinenbi .sc-title { color: var(--teal); }
+    .kinenbi-body {
+      padding: 15px 15px 14px;
+      display: flex; align-items: flex-start; gap: 12px;
+    }
+    .kinenbi-date {
+      flex-shrink: 0; text-align: center; min-width: 44px;
+      background: var(--teal); color: #fff;
+      border-radius: 3px; padding: 4px 6px;
+      font-family: var(--font-h); font-weight: 900;
+      line-height: 1.1;
+    }
+    .kinenbi-date-m { font-size: .6rem; letter-spacing: .08em; }
+    .kinenbi-date-d { font-size: 1.35rem; }
+    .kinenbi-content { flex: 1; min-width: 0; }
+    .kinenbi-text {
+      font-family: var(--font-h); font-size: .84rem; font-weight: 700;
+      color: var(--text); line-height: 1.6; margin-bottom: 8px;
+    }
+    .kinenbi-link {
+      display: inline-flex; align-items: center; gap: 4px;
+      font-size: .64rem; font-weight: 700; color: var(--teal);
+      border: 1px solid rgba(26,107,130,.3); border-radius: 2px;
+      padding: 3px 9px; transition: all var(--tr); text-decoration: none;
+    }
+    .kinenbi-link:hover { background: var(--teal); color: #fff; border-color: var(--teal); }
+    @media (prefers-color-scheme: dark) {
+      .kinenbi .sc-hd { background: #091b28; }
+      .kinenbi .sc-title { color: #5bc4d8; }
+      .kinenbi-link { color: #5bc4d8; border-color: rgba(91,196,216,.3); }
+      .kinenbi-link:hover { background: var(--teal); color: #fff; }
+    }
+
     /* ══ Footer ════════════════════════════════════════════════ */
     .footer {
       background: var(--navy-bg); color: rgba(255,255,255,.28);
@@ -807,8 +843,30 @@
 
     </main>
 
-    <!-- 右：サイドバー（順序：きょうのことば → 余白 → 社説・論点） -->
+    <!-- 右：サイドバー（順序：今日の記念日 → きょうのことば → 余白 → 社説・論点） -->
     <aside class="sidebar">
+
+      <!-- 今日の記念日 -->
+      {% if today_event %}
+        <div class="sc kinenbi">
+          <div class="sc-hd">
+            <span>🗓</span>
+            <span class="sc-title">今日の記念日</span>
+          </div>
+          <div class="kinenbi-body">
+            <div class="kinenbi-date">
+              <div class="kinenbi-date-m">{{ now.month }}月</div>
+              <div class="kinenbi-date-d">{{ now.day }}</div>
+            </div>
+            <div class="kinenbi-content">
+              <div class="kinenbi-text">{{ today_event.text }}</div>
+              {% if today_event.wiki_url %}
+                <a class="kinenbi-link" href="{{ today_event.wiki_url }}" target="_blank" rel="noopener">📖 Wikipediaで詳しく</a>
+              {% endif %}
+            </div>
+          </div>
+        </div>
+      {% endif %}
 
       <!-- きょうのことば -->
       <div id="kotoba" class="sc kotoba">
