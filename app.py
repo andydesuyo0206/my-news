@@ -435,6 +435,14 @@ def fmt_published(entry) -> str:
 def fetch_feed(source: str, url: str, category: str = '') -> list:
     try:
         feed = feedparser.parse(url)
+        # feedparser が XML 解析エラーを検出した場合はログ
+        if getattr(feed, 'bozo', False):
+            bozo_exc = getattr(feed, 'bozo_exception', None)
+            if bozo_exc and feed.entries:
+                print(f'[WARN] {source} 不正XML（エントリ取得済み）: {type(bozo_exc).__name__}')
+            elif not feed.entries:
+                print(f'[WARN] {source} 解析失敗: {bozo_exc}')
+                return []
         articles = []
         for entry in feed.entries[:6]:  # メモリ節約のため8→6に削減
             raw     = entry.get('summary', entry.get('description', ''))
@@ -444,11 +452,12 @@ def fetch_feed(source: str, url: str, category: str = '') -> list:
             # RSS に画像がなければ Pixabay でフォールバック（カテゴリ情報で精度向上）
             if not image and PIXABAY_KEY:
                 image = get_pixabay_image(extract_keyword(title, category))
+            pub = fmt_published(entry)
             articles.append({
                 'title':     title,
                 'link':      entry.get('link', '#'),
                 'summary':   summary[:220] + '…' if len(summary) > 220 else summary,
-                'published': fmt_published(entry),
+                'published': pub,
                 'source':    source,
                 'image':     image,
             })
