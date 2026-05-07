@@ -597,6 +597,22 @@
     }
 
     /* ══ ダークモード ════════════════════════════════════════════ */
+    /* ══ トースト通知 ════════════════════════════════════════════ */
+    .toast {
+      position: fixed; bottom: 80px; left: 50%; transform: translateX(-50%) translateY(12px);
+      background: var(--navy); color: rgba(255,255,255,.92);
+      border: 1px solid rgba(255,255,255,.12); border-radius: 3px;
+      padding: 8px 18px; font-family: var(--font-h); font-size: .76rem; font-weight: 700;
+      letter-spacing: .04em; white-space: nowrap;
+      box-shadow: var(--shadow-md); z-index: 2000;
+      opacity: 0; pointer-events: none;
+      transition: opacity .25s ease, transform .25s ease;
+    }
+    .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+    @media(max-width:640px){
+      .toast { bottom: calc(72px + env(safe-area-inset-bottom, 0px)); }
+    }
+
     /* ══ Web Share API ボタン ════════════════════════════════════ */
     .art-share {
       display: none; /* JSでnative share対応時のみ表示 */
@@ -982,6 +998,7 @@
   <div>朝凪（あさなぎ）— 朝日・毎日・Reuters・NYT・BBC・東洋経済 等の公開RSSを集約</div>
   <div>各記事の著作権は配信元に帰属します。ニュースは30分ごとキャッシュ。</div>
 </footer>
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
 <button class="scroll-top" id="scroll-top-btn" aria-label="ページトップへ戻る">
   <span class="scroll-top-icon">↑</span>
   <span class="scroll-top-label">ページの一番上に戻る</span>
@@ -1103,6 +1120,29 @@
     });
 
     sections.forEach(s => spy.observe(s));
+  })();
+
+  /* ── トースト表示 ── */
+  (function () {
+    const toast = document.getElementById('toast');
+    if (!toast) return;
+
+    function showToast(msg, duration = 2800) {
+      toast.textContent = msg;
+      toast.classList.add('show');
+      setTimeout(() => toast.classList.remove('show'), duration);
+    }
+
+    // リフレッシュ完了通知（?refreshed=1 のときに表示）
+    if (new URLSearchParams(location.search).get('refreshed') === '1') {
+      showToast('✓ ニュースを更新しました');
+      // URLからパラメータを消去（ブラウザ履歴は汚さない）
+      history.replaceState(null, '', location.pathname);
+    }
+
+    // refreshForm の送信をインターセプトして即時フィードバック
+    // （実際の更新完了は redirect 後に上記で表示される）
+    window._showToast = showToast;  // 外部から呼べるようにエクスポート
   })();
 
   /* ── 既読マーキング（localStorage） ── */

@@ -2308,7 +2308,7 @@ def refresh():
     _ai_batch_ts = 0.0
     # OGP キャッシュはクリアしない（再利用してスレッド節約）
     get_all_news()   # ← 内部で OGP プリフェッチも起動される
-    return redirect('/')
+    return redirect('/?refreshed=1')
 
 
 if __name__ == '__main__':
