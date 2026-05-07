@@ -16,6 +16,10 @@
   <title>朝凪 — {{ now.year }}年{{ now.month }}月{{ now.day }}日（{{ weekday }}）</title>
   <!-- Emoji favicon（外部ファイル不要） -->
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🗞</text></svg>">
+  <!-- PWA マニフェスト（ホーム画面への追加をサポート） -->
+  <link rel="manifest" href="/manifest.json">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="application-name" content="朝凪">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <!-- さくら選定：M PLUS 1p（適度なゴシック、丸みを抑えてクリーンに） -->

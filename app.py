@@ -2312,6 +2312,32 @@ def index():
     )
 
 
+@app.route('/manifest.json')
+def manifest():
+    """PWA Web App Manifest（ホーム画面への追加をサポート）"""
+    from flask import jsonify
+    return jsonify({
+        "name": "朝凪 — パーソナル朝刊",
+        "short_name": "朝凪",
+        "description": "複数メディアのニュースをAIが整理するパーソナル朝刊ダッシュボード",
+        "start_url": "/",
+        "display": "standalone",
+        "background_color": "#0a1628",
+        "theme_color": "#0a1628",
+        "lang": "ja",
+        "icons": [
+            {
+                "src": "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🗞</text></svg>",
+                "sizes": "any",
+                "type": "image/svg+xml",
+                "purpose": "any maskable"
+            }
+        ],
+        "categories": ["news"],
+        "orientation": "portrait",
+    })
+
+
 @app.route('/refresh', methods=['POST'])
 def refresh():
     global _cache_ts, _ai_cache, _ai_cache_ts, _ai_comment_cache, _ai_batch_cache, _ai_batch_ts
