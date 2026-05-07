@@ -560,8 +560,9 @@
       /* 既読の透過をモバイルでは強調しない（視認性のため） */
       .art.visited .art-thumb { opacity: .85; }
       .art-meta { margin-top: 3px; }
-      /* overview グリッドは 1カラム確定 */
-      .overview-grid { grid-template-columns: 1fr !important; }
+      /* overview グリッドは 2カラム（6カード→3行2列） */
+      .overview-grid { grid-template-columns: repeat(2, 1fr) !important; }
+      @media(max-width:400px){ .overview-grid { grid-template-columns: 1fr !important; } }
       .overview-summary { padding: 11px 14px 13px; font-size: .85rem; }
       .overview-themes { padding: 10px 14px 0; }
       .overview-hd { padding: 12px 14px 11px; }
