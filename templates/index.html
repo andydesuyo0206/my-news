@@ -83,8 +83,8 @@
     /* ロゴ：Playfair Display で高級感 */
     .mh-logo {
       font-family: var(--font-disp); font-size: 2.1rem; font-weight: 800;
-      color: #fff; text-align: center; cursor: pointer; letter-spacing: .28em;
-      user-select: none; display: flex; flex-direction: column; align-items: center; gap: 0;
+      color: #fff; text-align: center; letter-spacing: .28em;
+      display: flex; flex-direction: column; align-items: center; gap: 0;
       text-shadow: 0 1px 8px rgba(0,0,0,.3);
     }
     .mh-logo-kana {
@@ -492,7 +492,7 @@
           <div class="mh-today">🗓 今日は何の日：{% if today_event.wiki_url %}<a class="mh-today-link" href="{{ today_event.wiki_url }}" target="_blank" rel="noopener">{{ today_event.text }}</a>{% else %}{{ today_event.text }}{% endif %}</div>
         {% endif %}
       </div>
-      <div class="mh-logo" onclick="scrollTo(0,0)">
+      <div class="mh-logo">
         朝凪
         <span class="mh-logo-kana">あさなぎ</span>
         <span class="mh-logo-sub">点と点をつなぐ、毎日の情報整理。</span>
