@@ -2147,22 +2147,37 @@ def _refresh_ai_batch(news: dict, s_article: dict | None) -> dict:
 
     picks_lines = '\n'.join(f'  - [{p["cat"]}] {p["title"]}' for p in pick_arts)
 
+    # サマリーを含むより詳細なニュース情報をプロンプトに含める
+    cat_lines_detail: list[str] = []
+    for cat in ['主要', '経済', '政治', '国際', 'IT・テック', '国内・社会']:
+        arts = news.get(cat, [])
+        if not arts:
+            continue
+        art0 = arts[0]
+        lead = art0.get('summary', '')[:80]
+        rest = '／'.join(a['title'] for a in arts[1:3])
+        line = f"【{cat}】{art0['title']}"
+        if lead:
+            line += f"（{lead}…）"
+        if rest:
+            line += f"、ほか：{rest}"
+        cat_lines_detail.append(line)
+
     prompt = (
-        f"本日{date_str}のニュースを分析し、以下のJSON形式のみで回答してください。"
-        "JSONブロック外にテキストを含めないでください。\n\n"
-        f"[ニュース一覧]\n{chr(10).join(cat_lines)}\n\n"
+        f"あなたは日本の優秀な新聞記者です。本日{date_str}のニュースを分析し、"
+        "以下のJSON形式のみで回答してください。JSONブロック外にテキストを含めないでください。\n\n"
+        f"[本日のニュース概要]\n{chr(10).join(cat_lines_detail)}\n\n"
         f"[注目記事（論点用）]\n{s_title}（{s_source}）：{s_summary}\n\n"
         f"[AIによる視点用記事]\n{picks_lines}\n\n"
-        '{\n'
-        '  "overview": "今日の全体動向（3〜4文、新聞コラム調、敬体）",\n'
-        '  "shasetsu": "注目記事への論点コメント（2〜3文、敬体）",\n'
-        '  "picks": [\n'
-        '    {"category": "カテゴリ名", "text": "2文コメント（敬体）"}\n'
-        '  ]\n'
-        '}'
+        "指示：\n"
+        "- overview: 今日の主要な動きを3〜4文で。具体的な固有名詞・数字を使い新聞コラム調で。敬体（です・ます）\n"
+        "- shasetsu: 注目記事について論点・意義・今後の展望を2〜3文で。具体的かつ鋭い視点で。敬体\n"
+        "- picks: 各記事について「なぜ重要か」「どんな影響があるか」を2文で。専門的かつ平易に。敬体\n\n"
+        '{"overview":"...","shasetsu":"...","picks":['
+        '{"category":"カテゴリ","text":"2文コメント"}]}'
     )
 
-    raw = _call_claude(prompt, max_tokens=700)
+    raw = _call_claude(prompt, max_tokens=800)
     if not raw:
         print('[WARN] _refresh_ai_batch: API失敗 → テンプレートにフォールバック')
         return _fallback('template_api_error')
