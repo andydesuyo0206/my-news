@@ -1126,28 +1126,31 @@
   /* ── スクロールトップ + コンパクトヘッダー ── */
   const scrollTopBtn = document.getElementById('scroll-top-btn');
   const mastheadEl   = document.querySelector('.masthead');
-  // ヒステリシス：ON と OFF の閾値を分けることで、閾値付近でのガタつきを防ぐ
-  // 折りたたむ：90px 超え（下スクロール）
-  // 展開する  ：40px 未満（上スクロール）← 違う閾値がポイント
-  let _isCompact = false;
+
+  // ヒステリシス：ON 90px / OFF 40px で閾値を分離
+  // クールダウン：切り替え直後 350ms はトグル禁止
+  //   → ヘッダー高さ変化でページ位置がずれて再トグルするループを防ぐ
+  let _isCompact  = false;
+  let _cdUntil    = 0;   // クールダウン終了時刻 (ms)
+
+  function setCompact(val) {
+    if (val === _isCompact) return;
+    _isCompact = val;
+    mastheadEl.classList.toggle('compact', val);
+    _cdUntil = performance.now() + 350;   // 0.2s アニメ + 余裕 150ms
+  }
+
   window.addEventListener('scroll', () => {
     const sy = window.scrollY;
     scrollTopBtn.classList.toggle('visible', sy > 400);
-    if (!_isCompact && sy > 90) {
-      _isCompact = true;
-      mastheadEl.classList.add('compact');
-    } else if (_isCompact && sy < 40) {
-      _isCompact = false;
-      mastheadEl.classList.remove('compact');
-    }
+    if (performance.now() < _cdUntil) return;   // クールダウン中はスキップ
+    if (!_isCompact && sy > 90) setCompact(true);
+    else if (_isCompact && sy < 40) setCompact(false);
   }, { passive: true });
+
   scrollTopBtn.addEventListener('click', () => {
-    // ★ ガタつき修正：スクロール前にコンパクトを解除しておく
-    // こうすることでヘッダーの高さ変化がスクロール中に発生しなくなる
-    if (_isCompact) {
-      _isCompact = false;
-      mastheadEl.classList.remove('compact');
-    }
+    // クリック時：先にコンパクト解除 → その後スクロール開始
+    setCompact(false);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   });
 
