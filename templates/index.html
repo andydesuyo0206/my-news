@@ -130,14 +130,16 @@
     /* スクロールスパイ：現在表示中のセクションをハイライト */
     .mh-nav a.active { color: #fff; border-bottom-color: var(--accent-lt); }
 
-    /* コンパクトヘッダー：スクロール時にロゴ行を折りたたむ */
+    /* コンパクトヘッダー：スクロール時にロゴ行を折りたたむ
+       ガタつき対策：JS側でヒステリシス（ON 90px / OFF 40px）を持たせ
+       閾値付近での高速トグルを防ぐ。CSSは短めのdurationで追従。 */
     .mh-top {
-      transition: max-height .28s ease, padding .28s ease, opacity .2s ease, border-color .28s ease;
-      max-height: 120px; overflow: hidden;
+      transition: max-height .2s ease, padding .2s ease, opacity .15s ease;
+      max-height: 100px; overflow: hidden;
     }
     .masthead.compact .mh-top {
-      max-height: 0; padding-top: 0; padding-bottom: 0; opacity: 0;
-      pointer-events: none; border-bottom-color: transparent;
+      max-height: 0; padding-top: 0; padding-bottom: 0;
+      opacity: 0; pointer-events: none;
     }
 
     /* ══ レイアウト ══════════════════════════════════════════════ */
@@ -800,11 +802,20 @@
   /* ── スクロールトップ + コンパクトヘッダー ── */
   const scrollTopBtn = document.getElementById('scroll-top-btn');
   const mastheadEl   = document.querySelector('.masthead');
+  // ヒステリシス：ON と OFF の閾値を分けることで、閾値付近でのガタつきを防ぐ
+  // 折りたたむ：90px 超え（下スクロール）
+  // 展開する  ：40px 未満（上スクロール）← 違う閾値がポイント
+  let _isCompact = false;
   window.addEventListener('scroll', () => {
     const sy = window.scrollY;
     scrollTopBtn.classList.toggle('visible', sy > 400);
-    // ロゴ行を折りたたんでナビのみ表示（省スペース）
-    mastheadEl.classList.toggle('compact', sy > 90);
+    if (!_isCompact && sy > 90) {
+      _isCompact = true;
+      mastheadEl.classList.add('compact');
+    } else if (_isCompact && sy < 40) {
+      _isCompact = false;
+      mastheadEl.classList.remove('compact');
+    }
   }, { passive: true });
   scrollTopBtn.addEventListener('click', () => {
     window.scrollTo({ top: 0, behavior: 'smooth' });
