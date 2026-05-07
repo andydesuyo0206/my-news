@@ -11,7 +11,7 @@ import json
 import threading
 import urllib.request
 import urllib.parse
-from concurrent.futures import ThreadPoolExecutor
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime, timezone
 from zoneinfo import ZoneInfo
 from flask import Flask, render_template, redirect
@@ -473,16 +473,42 @@ def get_all_news() -> dict:
     global _cache, _cache_ts
     if time.time() - _cache_ts < CACHE_TTL and _cache:
         return _cache
+
+    # ── 全フィードを並列取得（max_workers=6：512MB制限内でバランス）──
+    # 35フィードを逐次→並列にすることで10〜30秒→3〜6秒程度に短縮
+    tasks: list[tuple[str, str, str]] = [
+        (src, url, category)
+        for category, sources in FEEDS.items()
+        for src, url in sources
+    ]
+
+    # フィード取得用スレッドプール（使い捨て：メモリ解放のため with で閉じる）
+    raw_results: dict[tuple[str, str], list] = {}  # (category, src) → articles
+    with ThreadPoolExecutor(max_workers=6, thread_name_prefix='feed') as pool:
+        future_map = {
+            pool.submit(fetch_feed, src, url, cat): (src, url, cat)
+            for src, url, cat in tasks
+        }
+        for future in as_completed(future_map):
+            src, url, cat = future_map[future]
+            try:
+                raw_results[(cat, src)] = future.result()
+            except Exception as e:
+                print(f'[WARN] {src} 並列取得例外: {e}')
+                raw_results[(cat, src)] = []
+
+    # カテゴリごとにインターリーブして整形
     result = {}
     for category, sources in FEEDS.items():
-        per_source = [fetch_feed(src, url, category) for src, url in sources]
+        per_source = [raw_results.get((category, src), []) for src, _ in sources]
         result[category] = interleave(per_source)
+
     _cache = result
     _cache_ts = time.time()
     # RSSに画像がない記事の og:image をバックグラウンドで非同期取得（ページ表示をブロックしない）
     threading.Thread(target=_prefetch_ogp, args=(result,), daemon=True).start()
     gc.collect()   # キャッシュ更新後に不要オブジェクトを明示的に回収
-    print('[DEBUG] get_all_news: GC実行完了')
+    print('[DEBUG] get_all_news: 並列取得完了・GC実行')
     return result
 
 
