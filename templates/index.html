@@ -220,7 +220,9 @@
       cursor: pointer; transition: background var(--tr);
       display: flex; flex-direction: column;
     }
-    /* ov-card ホバー：背景変化なし。タイトル色のみ */
+    .ov-card:hover { background: rgba(30,77,140,.04); }
+    .ov-card:focus-visible { outline: 2px solid var(--accent-lt); outline-offset: -2px; }
+    /* ov-card ホバー */
     .ov-card-cat {
       font-family: var(--font-h); font-size: .58rem; font-weight: 800;
       letter-spacing: .1em; margin-bottom: 7px;
@@ -761,6 +763,26 @@
           </div>
         {% endif %}
       </section>
+
+      <!-- 主要ニュース一覧（overviewの下・ハイライトを除いた追加記事） -->
+      {% set main_arts = news.get('主要', []) %}
+      {% if main_arts %}
+        <div class="ns" style="--cat:#1e4d8c; margin-top:-1px; border-radius:0 0 var(--radius) var(--radius);">
+          {% for art in main_arts[:5] %}
+            <div class="art" onclick="window.open('{{ art.link }}','_blank')">
+              <div class="art-body">
+                <div class="art-title">{{ art.title }}</div>
+                {% if art.summary %}<div class="art-summary">{{ art.summary }}</div>{% endif %}
+                <div class="art-meta">
+                  <span class="art-src">{{ art.source }}</span>
+                  {% if art.published %}<span class="art-time">{{ art.published }}</span>{% endif %}
+                </div>
+              </div>
+              {% if art.image %}<img class="art-thumb" src="{{ art.image }}" alt="" loading="lazy" onerror="this.style.display='none'">{% endif %}
+            </div>
+          {% endfor %}
+        </div>
+      {% endif %}
 
       <!-- 経済 -->
       {% set arts = news.get('経済', []) %}
