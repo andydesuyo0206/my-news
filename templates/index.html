@@ -14,6 +14,8 @@
   <meta property="og:url" content="https://my-news-yqvv.onrender.com/">
   <meta name="twitter:card" content="summary">
   <title>朝凪 — {{ now.year }}年{{ now.month }}月{{ now.day }}日（{{ weekday }}）</title>
+  <!-- Emoji favicon（外部ファイル不要） -->
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🗞</text></svg>">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <!-- さくら選定：M PLUS 1p（適度なゴシック、丸みを抑えてクリーンに） -->
@@ -139,6 +141,15 @@
     .mh-nav a:hover { color: #fff; border-bottom-color: var(--steel); }
     /* スクロールスパイ：現在表示中のセクションをハイライト */
     .mh-nav a.active { color: #fff; border-bottom-color: var(--accent-lt); }
+    /* コンパクト時にナビ左端にミニロゴを表示 */
+    .mh-nav-logo {
+      font-family: var(--font-disp); font-size: .95rem; font-weight: 800;
+      color: rgba(255,255,255,.0); letter-spacing: .18em; padding: 8px 14px 8px 6px;
+      white-space: nowrap; flex-shrink: 0; align-self: center;
+      transition: color .2s ease, opacity .2s ease;
+      pointer-events: none; user-select: none;
+    }
+    .masthead.compact .mh-nav-logo { color: rgba(255,255,255,.85); }
 
     /* コンパクトヘッダー：スクロール時にロゴ行を折りたたむ
        ガタつき対策：JS側でヒステリシス（ON 90px / OFF 40px）を持たせ
@@ -561,7 +572,8 @@
         <div class="mh-edition">最終更新 {{ last_updated }}</div>
       </div>
     </div>
-    <nav class="mh-nav">
+    <nav class="mh-nav" role="navigation" aria-label="カテゴリナビ">
+      <span class="mh-nav-logo" aria-hidden="true">朝凪</span>
       <a href="#top">🗞 主要</a>
       <a href="#keizai">💹 経済</a>
       <a href="#seiji">🏛 政治</a>
@@ -913,6 +925,27 @@
   scrollTopBtn.addEventListener('click', () => {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   });
+
+  /* ── 記事カードのアクセシビリティ（role + キーボード操作） ── */
+  document.querySelectorAll('.art[onclick], .ov-card[onclick]').forEach(card => {
+    card.setAttribute('role', 'button');
+    card.setAttribute('tabindex', '0');
+    card.addEventListener('keydown', e => {
+      if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); card.click(); }
+    });
+  });
+
+  /* ── リフレッシュボタン：ローディング表示 ── */
+  const refreshForm = document.querySelector('form[action="/refresh"]');
+  if (refreshForm) {
+    refreshForm.addEventListener('submit', function () {
+      const btn = this.querySelector('.btn-refresh');
+      if (!btn) return;
+      btn.textContent = '↻ 更新中…';
+      btn.disabled = true;
+      btn.style.opacity = '.5';
+    });
+  }
 
   /* ── スクロールスパイ：PC上ナビ＋モバイルボトムナビ 両方ハイライト ── */
   (function () {
