@@ -2,6 +2,8 @@
 <html lang="ja">
 <head>
   <meta charset="UTF-8">
+  <!-- ★ FOUC防止：レンダリング前にテーマを確定 -->
+  <script>(function(){var s=localStorage.getItem('asanagi_theme'),q=window.matchMedia('(prefers-color-scheme: dark)').matches;document.documentElement.dataset.theme=s||(q?'dark':'light');}());</script>
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <meta name="theme-color" content="#0a1628">
   <meta name="description" content="朝凪 — 朝日・NHK・Reuters など複数メディアのニュースをAI要約で整理するパーソナル朝刊ダッシュボード。">
@@ -133,6 +135,18 @@
     .btn-refresh:hover {
       background: rgba(255,255,255,.12); border-color: rgba(255,255,255,.4); color: #fff;
     }
+    /* ── テーマトグルボタン ── */
+    .btn-theme {
+      background: transparent; color: rgba(255,255,255,.7);
+      border: 1px solid rgba(255,255,255,.2); border-radius: 50%;
+      width: 30px; height: 30px; padding: 0;
+      font-size: .85rem; line-height: 1; cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      transition: background var(--tr), border-color var(--tr), transform .3s ease;
+      flex-shrink: 0;
+    }
+    .btn-theme:hover { background: rgba(255,255,255,.1); border-color: rgba(255,255,255,.4); transform: rotate(22deg); }
+    .mh-right-row { display: flex; align-items: center; gap: 8px; }
 
     /* ナビゲーション */
     .mh-nav { display: flex; overflow-x: auto; scrollbar-width: none; padding: 0 20px; gap: 0; }
@@ -480,12 +494,10 @@
       padding: 3px 9px; transition: all var(--tr); text-decoration: none;
     }
     .kinenbi-link:hover { background: var(--teal); color: #fff; border-color: var(--teal); }
-    @media (prefers-color-scheme: dark) {
-      .kinenbi .sc-hd { background: #091b28; }
-      .kinenbi .sc-title { color: #5bc4d8; }
-      .kinenbi-link { color: #5bc4d8; border-color: rgba(91,196,216,.3); }
-      .kinenbi-link:hover { background: var(--teal); color: #fff; }
-    }
+    html[data-theme="dark"] .kinenbi .sc-hd { background: #091b28; }
+    html[data-theme="dark"] .kinenbi .sc-title { color: #5bc4d8; }
+    html[data-theme="dark"] .kinenbi-link { color: #5bc4d8; border-color: rgba(91,196,216,.3); }
+    html[data-theme="dark"] .kinenbi-link:hover { background: var(--teal); color: #fff; }
 
     /* ══ Footer ════════════════════════════════════════════════ */
     .footer {
@@ -609,7 +621,7 @@
       *{animation:none!important;transition:none!important;box-shadow:none!important;}
       .masthead{position:relative;}
       .masthead::before{display:none;}
-      .mh-nav,.scroll-top,.btn-refresh{display:none!important;}
+      .mh-nav,.scroll-top,.btn-refresh,.btn-theme{display:none!important;}
       .wrap{grid-template-columns:1fr 220px;}
       .sidebar{position:static;}
       .art{animation:none!important;page-break-inside:avoid;}
@@ -647,46 +659,62 @@
     .art-share svg { width: 14px; height: 14px; pointer-events: none; }
     .has-share-api .art-share { display: inline-flex; }
 
-    /* ══ ダークモード ════════════════════════════════════════════ */
-    @media (prefers-color-scheme: dark) {
-      :root {
-        --bg:          #0c1624;
-        --card:        #132036;
-        --border:      #1e3352;
-        --border-lt:   #192d47;
-        --text:        #e2eaf5;
-        --text-2:      #c0d3e8;
-        --muted:       #7a9ab8;
-        --muted-lt:    #5a7e9e;
-        --steel-pale:  #0d1e30;
-        --teal-pale:   #091b28;
-      }
-      /* 記事カードホバー（ダーク） */
-      .art:hover { background: rgba(45,108,190,.08); }
-      .art:active { background: rgba(45,108,190,.15); }
-      /* 既読（ダーク） */
-      .art.visited .art-title { color: #4a6680; }
-      /* 記事ソースバッジ */
-      .art-src { background: #1a2f45; }
-      /* サムネイルプレースホルダー */
-      .kotoba-thumb { background: #0d2035; }
-      .yoraku-thumb { background: #0c2a1c; }
-      /* サイドバーヘッダー背景 */
-      .expert-picks .sc-hd { background: #0d2232; }
-      .expert-picks .sc-title { color: #7ecef0; }
-      .ep-cat { background: #0d2232; color: #7ecef0; }
-      .ep-headline a:hover { color: #38bdf8; }
-      .yoraku .sc-hd { background: #0c2218; }
-      .yoraku-opener { border-bottom-color: #1a5c36; }
-      .yoraku-closer { border-top-color: #1a5c36; }
-      .shasetsu .sc-hd { background: #0e1e34; }
-      /* 今日は何の日リンク */
-      .today-link { background: #132036; border-color: #1e3352; }
-      /* 概観カード内テキスト */
-      .ov-card-title { color: var(--text); }
-      /* スクロールトップボタン */
-      .scroll-top { background: rgba(19,32,54,.9); border-color: #2a4a72; color: var(--text); }
+    /* ══ ダークモード（html[data-theme="dark"] で制御） ════════════ */
+    html[data-theme="dark"] {
+      /* ── 背景・カード ── */
+      --bg:          #0c1624;
+      --card:        #132036;
+      --border:      #1e3352;
+      --border-lt:   #192d47;
+      /* ── 本文テキスト ── */
+      --text:        #e2eaf5;
+      --text-2:      #c0d3e8;
+      --muted:       #7a9ab8;
+      --muted-lt:    #5a7e9e;
+      /* ── 薄背景 ── */
+      --steel-pale:  #0d1e30;
+      --teal-pale:   #091b28;
+      /* ── 暗色変数をライトトーンへ反転 ── */
+      --navy-dark:   #dde8f8;
+      --navy:        #b8cfe8;
+      --accent:      #5b9cf6;
+      --accent-lt:   #7cb8ff;
+      --green:       #4ade80;
+      --teal:        #2dd4bf;
+      --steel:       #93c5fd;
     }
+    html[data-theme="dark"] .art:hover { background: rgba(91,156,246,.07); }
+    html[data-theme="dark"] .art:active { background: rgba(91,156,246,.14); }
+    html[data-theme="dark"] .art.visited .art-title { color: #4d6f90; }
+    html[data-theme="dark"] .art-src { background: #1a2f45; color: var(--muted); }
+    html[data-theme="dark"] .kotoba-thumb { background: #0d2035; }
+    html[data-theme="dark"] .yoraku-thumb { background: #0c2a1c; }
+    html[data-theme="dark"] .expert-picks .sc-hd { background: #0d2232; }
+    html[data-theme="dark"] .expert-picks .sc-title { color: #7ecef0; }
+    html[data-theme="dark"] .ep-cat { background: #0d2232; color: #7ecef0; }
+    html[data-theme="dark"] .ep-headline { color: var(--navy-dark); }
+    html[data-theme="dark"] .ep-headline a { color: var(--navy-dark); }
+    html[data-theme="dark"] .ep-headline a:hover { color: var(--accent-lt); }
+    html[data-theme="dark"] .yoraku .sc-hd { background: #0c2218; }
+    html[data-theme="dark"] .yoraku-art-title { color: var(--navy-dark); }
+    html[data-theme="dark"] .yoraku-art-title a { color: var(--navy-dark); }
+    html[data-theme="dark"] .yoraku-art-title a:hover { color: var(--green); }
+    html[data-theme="dark"] .yoraku-opener { border-bottom-color: #226640; }
+    html[data-theme="dark"] .yoraku-closer { border-top-color: #226640; }
+    html[data-theme="dark"] .shasetsu .sc-hd { background: #0e1e34; }
+    html[data-theme="dark"] .shasetsu-art { color: var(--navy-dark); }
+    html[data-theme="dark"] .shasetsu-more { color: var(--accent); border-bottom-color: rgba(91,156,246,.4); }
+    html[data-theme="dark"] .shasetsu-more:hover { color: var(--accent-lt); border-bottom-color: var(--accent-lt); }
+    html[data-theme="dark"] .shasetsu-label { color: var(--navy); }
+    html[data-theme="dark"] .shasetsu-quote { border-left-color: var(--navy); background: rgba(91,156,246,.06); }
+    html[data-theme="dark"] .kotoba-link { border-color: rgba(91,156,246,.3); }
+    html[data-theme="dark"] .kotoba-link:hover { background: rgba(91,156,246,.12); }
+    html[data-theme="dark"] .kotoba-en { color: var(--steel); }
+    html[data-theme="dark"] .today-link { background: #132036; border-color: #1e3352; }
+    html[data-theme="dark"] .ov-card-title { color: var(--text); }
+    html[data-theme="dark"] .ns-hd-title { color: var(--navy-dark) !important; }
+    html[data-theme="dark"] .scroll-top { background: rgba(19,32,54,.92); border-color: #2a4a72; color: var(--text); }
+    html[data-theme="dark"] .art:focus-visible { outline-color: var(--accent-lt); }
   </style>
 </head>
 <body>
@@ -707,9 +735,14 @@
         <span class="mh-logo-sub">点と点をつなぐ、毎日の情報整理。</span>
       </div>
       <div class="mh-right">
-        <form action="/refresh" method="post" style="margin:0">
-          <button class="btn-refresh" type="submit">↻ 最新の情報に更新</button>
-        </form>
+        <div class="mh-right-row">
+          <form action="/refresh" method="post" style="margin:0">
+            <button class="btn-refresh" type="submit">↻ 最新の情報に更新</button>
+          </form>
+          <button id="theme-toggle" class="btn-theme" aria-label="テーマ切り替え" title="ライト／ダーク切替">
+            <span id="theme-icon">🌙</span>
+          </button>
+        </div>
         <div class="mh-edition">最終更新 {{ last_updated }}</div>
       </div>
     </div>
@@ -1109,6 +1142,12 @@
     }
   }, { passive: true });
   scrollTopBtn.addEventListener('click', () => {
+    // ★ ガタつき修正：スクロール前にコンパクトを解除しておく
+    // こうすることでヘッダーの高さ変化がスクロール中に発生しなくなる
+    if (_isCompact) {
+      _isCompact = false;
+      mastheadEl.classList.remove('compact');
+    }
     window.scrollTo({ top: 0, behavior: 'smooth' });
   });
 
@@ -1367,6 +1406,42 @@
     init();
     window.addEventListener('scroll', onScroll, { passive: true });
     window.addEventListener('resize', init,    { passive: true });
+  })();
+
+  /* ── テーマ切り替え ────────────────────────────────────────────
+     localStorage 'asanagi_theme' に 'light' | 'dark' を保存。
+     保存値がない場合はシステム設定を追跡し続ける。
+  ────────────────────────────────────────────────────────────── */
+  (function () {
+    const THEME_KEY = 'asanagi_theme';
+    const html      = document.documentElement;
+    const btn       = document.getElementById('theme-toggle');
+    const icon      = document.getElementById('theme-icon');
+
+    function updateIcon(theme) {
+      if (icon) icon.textContent = theme === 'dark' ? '☀️' : '🌙';
+    }
+
+    // インラインスクリプトがすでに data-theme をセット済み → アイコン同期のみ
+    updateIcon(html.dataset.theme || 'light');
+
+    if (btn) {
+      btn.addEventListener('click', () => {
+        const next = html.dataset.theme === 'dark' ? 'light' : 'dark';
+        html.dataset.theme = next;
+        localStorage.setItem(THEME_KEY, next);
+        updateIcon(next);
+      });
+    }
+
+    // システム設定変更：手動設定がない場合のみ追跡
+    window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', e => {
+      if (!localStorage.getItem(THEME_KEY)) {
+        const theme = e.matches ? 'dark' : 'light';
+        html.dataset.theme = theme;
+        updateIcon(theme);
+      }
+    });
   })();
 </script>
 </body>
