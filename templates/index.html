@@ -308,11 +308,18 @@
       animation: fadeUp .3s ease both;
     }
     .art:last-child { border-bottom: none; }
-    /* ホバー時は背景そのまま。タイトルのみ色変え */
+    /* ホバー：背景に薄いティント */
+    .art:hover { background: rgba(30,77,140,.04); }
+    .art:active { background: rgba(30,77,140,.08); }
     .art:nth-child(1){animation-delay:.03s}.art:nth-child(2){animation-delay:.06s}
     .art:nth-child(3){animation-delay:.09s}.art:nth-child(4){animation-delay:.12s}
     .art:nth-child(5){animation-delay:.15s}.art:nth-child(6){animation-delay:.18s}
     .art:nth-child(7){animation-delay:.21s}
+    /* フォーカスリング（キーボード操作） */
+    .art:focus-visible {
+      outline: 2px solid var(--accent-lt);
+      outline-offset: -2px;
+    }
     .art-body { flex: 1; min-width: 0; }
     .art-thumb {
       width: 80px; height: 58px; object-fit: cover;
@@ -324,8 +331,11 @@
       display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
       transition: color var(--tr);
     }
-    /* 記事タイトルのホバー：下線なし、やや暗いブルーに */
-    .art:hover .art-title { color: var(--accent); }
+    /* ホバー＆既読：タイトル色変更 */
+    .art:hover .art-title { color: var(--accent-lt); }
+    /* 既読記事：タイトルをやや薄く（ブラウザ visited の代替） */
+    .art.visited .art-title { color: var(--muted); }
+    .art.visited .art-thumb { opacity: .75; }
     .art-summary {
       font-size: .76rem; color: var(--muted); line-height: 1.72; margin-top: 3px;
       display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
@@ -577,6 +587,11 @@
         --steel-pale:  #0d1e30;
         --teal-pale:   #091b28;
       }
+      /* 記事カードホバー（ダーク） */
+      .art:hover { background: rgba(45,108,190,.08); }
+      .art:active { background: rgba(45,108,190,.15); }
+      /* 既読（ダーク） */
+      .art.visited .art-title { color: #4a6680; }
       /* 記事ソースバッジ */
       .art-src { background: #1a2f45; }
       /* サムネイルプレースホルダー */
@@ -1027,6 +1042,38 @@
     });
 
     sections.forEach(s => spy.observe(s));
+  })();
+
+  /* ── 既読マーキング（localStorage） ── */
+  (function () {
+    const STORAGE_KEY = 'asanagi_read';
+    const MAX_ITEMS   = 200;  // 上限を超えたら古い順に削除
+
+    // 既読URLセットを読み込み
+    let readSet;
+    try {
+      readSet = new Set(JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]'));
+    } catch { readSet = new Set(); }
+
+    // 保存（上限超えたら古い100件を削除）
+    function saveRead() {
+      let arr = Array.from(readSet);
+      if (arr.length > MAX_ITEMS) arr = arr.slice(arr.length - MAX_ITEMS);
+      try { localStorage.setItem(STORAGE_KEY, JSON.stringify(arr)); } catch {}
+    }
+
+    // 既読クラス付与 + クリック時に記録
+    document.querySelectorAll('.art[onclick]').forEach(card => {
+      const m = (card.getAttribute('onclick') || '').match(/window\.open\(['"]([^'"]+)['"]/);
+      if (!m) return;
+      const url = m[1];
+      if (readSet.has(url)) card.classList.add('visited');
+      card.addEventListener('click', () => {
+        readSet.add(url);
+        card.classList.add('visited');
+        saveRead();
+      });
+    });
   })();
 
   /* ── Web Share API：シェアボタンを動的挿入 ── */
