@@ -546,6 +546,58 @@
       .sidebar{position:static;}
       .art{animation:none!important;page-break-inside:avoid;}
     }
+
+    /* ══ ダークモード ════════════════════════════════════════════ */
+    /* ══ Web Share API ボタン ════════════════════════════════════ */
+    .art-share {
+      display: none; /* JSでnative share対応時のみ表示 */
+      align-items: center; justify-content: center;
+      width: 22px; height: 22px; margin-left: auto;
+      border: none; background: none; cursor: pointer;
+      color: var(--muted-lt); border-radius: 3px;
+      transition: color var(--tr), background var(--tr);
+      -webkit-tap-highlight-color: transparent;
+      flex-shrink: 0;
+    }
+    .art-share:hover, .art-share:active { color: var(--accent-lt); background: var(--steel-pale); }
+    .art-share svg { width: 14px; height: 14px; pointer-events: none; }
+    .has-share-api .art-share { display: inline-flex; }
+
+    /* ══ ダークモード ════════════════════════════════════════════ */
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg:          #0c1624;
+        --card:        #132036;
+        --border:      #1e3352;
+        --border-lt:   #192d47;
+        --text:        #e2eaf5;
+        --text-2:      #c0d3e8;
+        --muted:       #7a9ab8;
+        --muted-lt:    #5a7e9e;
+        --steel-pale:  #0d1e30;
+        --teal-pale:   #091b28;
+      }
+      /* 記事ソースバッジ */
+      .art-src { background: #1a2f45; }
+      /* サムネイルプレースホルダー */
+      .kotoba-thumb { background: #0d2035; }
+      .yoraku-thumb { background: #0c2a1c; }
+      /* サイドバーヘッダー背景 */
+      .expert-picks .sc-hd { background: #0d2232; }
+      .expert-picks .sc-title { color: #7ecef0; }
+      .ep-cat { background: #0d2232; color: #7ecef0; }
+      .ep-headline a:hover { color: #38bdf8; }
+      .yoraku .sc-hd { background: #0c2218; }
+      .yoraku-opener { border-bottom-color: #1a5c36; }
+      .yoraku-closer { border-top-color: #1a5c36; }
+      .shasetsu .sc-hd { background: #0e1e34; }
+      /* 今日は何の日リンク */
+      .today-link { background: #132036; border-color: #1e3352; }
+      /* 概観カード内テキスト */
+      .ov-card-title { color: var(--text); }
+      /* スクロールトップボタン */
+      .scroll-top { background: rgba(19,32,54,.9); border-color: #2a4a72; color: var(--text); }
+    }
   </style>
 </head>
 <body>
@@ -975,6 +1027,48 @@
     });
 
     sections.forEach(s => spy.observe(s));
+  })();
+
+  /* ── Web Share API：シェアボタンを動的挿入 ── */
+  (function () {
+    if (!navigator.share) return;  // 非対応ブラウザはスキップ
+    document.documentElement.classList.add('has-share-api');
+
+    // シェアボタン SVG（↑アイコン）
+    const shareSVG = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/>
+      <line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/>
+    </svg>`;
+
+    // 全記事カードにシェアボタンを注入
+    document.querySelectorAll('.art[onclick]').forEach(card => {
+      const meta = card.querySelector('.art-meta');
+      if (!meta) return;
+
+      // onclick からリンクURL を抽出
+      const onclickVal = card.getAttribute('onclick') || '';
+      const urlMatch = onclickVal.match(/window\.open\(['"]([^'"]+)['"]/);
+      if (!urlMatch) return;
+
+      const url   = urlMatch[1];
+      const title = card.querySelector('.art-title')?.textContent?.trim() || '';
+
+      const btn = document.createElement('button');
+      btn.className = 'art-share';
+      btn.setAttribute('aria-label', 'シェア');
+      btn.innerHTML = shareSVG;
+      btn.addEventListener('click', async e => {
+        e.stopPropagation();  // カードの onclick を防ぐ
+        try {
+          await navigator.share({ title, url });
+        } catch (err) {
+          // AbortError（ユーザーキャンセル）は無視
+          if (err.name !== 'AbortError') console.warn('[share]', err);
+        }
+      });
+
+      meta.appendChild(btn);
+    });
   })();
 
   /* ── プログレッシブスティッキーサイドバー ──────────────────────
