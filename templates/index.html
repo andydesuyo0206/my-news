@@ -1075,6 +1075,39 @@
     window.scrollTo({ top: 0, behavior: 'smooth' });
   });
 
+  /* ── 公開時刻の相対表示（"2時間前" など） ── */
+  (function () {
+    // サーバー側フォーマット: "2026/05/07(Wed) 09:30"
+    const RE = /^(\d{4})\/(\d{2})\/(\d{2})\(\w+\) (\d{2}):(\d{2})$/;
+
+    function relTime(dateStr) {
+      const m = RE.exec(dateStr);
+      if (!m) return null;
+      // JST として Date を構築（UTCオフセット +9h）
+      const dt = new Date(`${m[1]}-${m[2]}-${m[3]}T${m[4]}:${m[5]}:00+09:00`);
+      const diffMs = Date.now() - dt.getTime();
+      if (isNaN(diffMs) || diffMs < 0) return null;
+
+      const mins  = Math.floor(diffMs / 60000);
+      const hours = Math.floor(diffMs / 3600000);
+      const days  = Math.floor(diffMs / 86400000);
+
+      if (mins < 5)   return 'たった今';
+      if (mins < 60)  return `${mins}分前`;
+      if (hours < 24) return `${hours}時間前`;
+      if (days < 7)   return `${days}日前`;
+      return null;  // 1週間以上は元の表記を維持
+    }
+
+    document.querySelectorAll('.art-time').forEach(el => {
+      const rel = relTime(el.textContent.trim());
+      if (rel) {
+        el.setAttribute('title', el.textContent.trim());  // ホバーで元の日時
+        el.textContent = rel;
+      }
+    });
+  })();
+
   /* ── 記事カードのアクセシビリティ（role + キーボード操作） ── */
   document.querySelectorAll('.art[onclick], .ov-card[onclick]').forEach(card => {
     card.setAttribute('role', 'button');
@@ -1095,6 +1128,25 @@
       btn.style.opacity = '.5';
     });
   }
+
+  /* ── PCナビにセクション記事数バッジを表示 ── */
+  (function () {
+    // .mh-nav の各リンクに対応するセクションの記事数を数えて表示
+    document.querySelectorAll('.mh-nav a[href^="#"]').forEach(a => {
+      const id = a.getAttribute('href').slice(1);
+      const section = document.getElementById(id);
+      if (!section) return;
+      const artCount = section.querySelectorAll('.art').length;
+      if (artCount === 0) return;
+      const badge = document.createElement('sup');
+      badge.style.cssText = [
+        'font-size:.6em', 'opacity:.7', 'margin-left:3px',
+        'font-weight:400', 'vertical-align:super', 'letter-spacing:0',
+      ].join(';');
+      badge.textContent = artCount;
+      a.appendChild(badge);
+    });
+  })();
 
   /* ── スクロールスパイ：PC上ナビ＋モバイルボトムナビ 両方ハイライト ── */
   (function () {
