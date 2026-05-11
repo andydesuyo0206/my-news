@@ -549,7 +549,7 @@
       .mh-top { grid-template-columns: 1fr; }
       .mh-logo { font-size: 1.6rem; letter-spacing: .22em; }
       /* ボトムナビ分の余白確保（safe-area-inset-bottom はiPhone Xノッチ対応） */
-      .page { padding: 12px 12px calc(64px + env(safe-area-inset-bottom, 0px)); }
+      .page { padding: 16px 14px calc(72px + env(safe-area-inset-bottom, 0px)); }
       /* 上部ナビはボトムナビに任せて非表示 */
       .mh-nav { display: none !important; }
       /* コンパクトヘッダーはスマホでは無効化（ロゴを常時表示） */
@@ -558,34 +558,57 @@
         padding-bottom: 11px !important; opacity: 1 !important;
         pointer-events: auto !important;
       }
-      /* サマリーを2行まで表示（可読性向上） */
+
+      /* ══ ★ モバイル メリハリ強化 ══ */
+
+      /* ── セクション：上ボーダーを太くして存在感アップ ── */
+      .ns { border-top-width: 4px; margin-bottom: 22px; }
+
+      /* ── セクション見出し：余白拡大＋フォント強化 ── */
+      .ns-hd { padding: 13px 16px; gap: 10px; }
+      .ns-hd-title { font-size: 1.05rem; letter-spacing: .04em; }
+
+      /* ── 記事カード：余白拡大でタッチしやすく・読みやすく ── */
+      .art { padding: 16px 16px; gap: 13px; min-height: 72px; }
+
+      /* ── 記事タイトル：モバイルでは大きく・3行まで ── */
+      .art-title {
+        font-size: 1rem; line-height: 1.6;
+        -webkit-line-clamp: 3;
+      }
+
+      /* ── サムネイル：高さを少し拡大 ── */
+      .art-thumb { width: 82px; height: 68px; }
+
+      /* ── サマリー：2行・フォントは維持 ── */
       .art-summary {
         display: -webkit-box; -webkit-line-clamp: 2;
-        -webkit-box-orient: vertical; overflow: hidden; font-size: .74rem;
-        margin-top: 2px;
+        -webkit-box-orient: vertical; overflow: hidden;
+        font-size: .78rem; line-height: 1.7; margin-top: 5px;
       }
-      /* サムネイルを正方形気味に（画面幅に対して見やすいサイズ） */
-      .art-thumb { width: 76px; height: 60px; }
-      /* タッチターゲットを広げる */
-      .art { padding: 13px 12px; min-height: 60px; gap: 10px; }
-      .art-title { font-size: .88rem; line-height: 1.5; }
+
+      /* ── メタ情報：余白を広めに ── */
+      .art-meta { margin-top: 6px; gap: 6px; }
+      .art-src { font-size: .63rem; padding: 2px 7px; }
+      .art-time { font-size: .63rem; }
+      .art-new { font-size: .58rem; padding: 2px 6px; }
+
       /* 既読の透過をモバイルでは強調しない（視認性のため） */
       .art.visited .art-thumb { opacity: .85; }
-      .art-meta { margin-top: 3px; }
-      /* overview グリッドは 2カラム（6カード→3行2列） */
+
+      /* ── overview グリッド：2カラム ── */
       .overview-grid { grid-template-columns: repeat(2, 1fr) !important; }
       @media(max-width:400px){ .overview-grid { grid-template-columns: 1fr !important; } }
-      .overview-summary { padding: 11px 14px 13px; font-size: .85rem; }
-      .overview-themes { padding: 10px 14px 0; }
-      .overview-hd { padding: 12px 14px 11px; }
-      /* ↑ボタンをボトムナビの上に */
+      .overview-summary { padding: 13px 16px 15px; font-size: .88rem; line-height: 1.85; }
+      .overview-themes { padding: 10px 16px 0; }
+      .overview-hd { padding: 14px 16px; }
+
+      /* ── ことばカード ── */
+      .kotoba-thumb { height: 100px; }
+      .kotoba-word { font-size: 1.5rem; }
+
+      /* ── ↑ボタンをボトムナビの上に ── */
       .scroll-top { bottom: calc(64px + env(safe-area-inset-bottom, 0px) + 12px); right: 16px; }
-      /* ことばカードを少し締める */
-      .kotoba-thumb { height: 90px; }
-      .kotoba-word { font-size: 1.4rem; }
-      /* ニュースセクション見出し */
-      .ns-hd { padding: 9px 14px; }
-      .ns-hd-title { font-size: .85rem; }
     }
 
     /* ── モバイルボトムナビ ── */
