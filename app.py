@@ -372,10 +372,29 @@ def _prefetch_ogp(news: dict) -> None:
                     continue
             _ogp_executor.submit(_fetch_ogp, link)
             count += 1
-            if count >= 15:   # メモリ節約のため最大15件に制限（旧40件）
+            if count >= 50:   # 15件→50件に引き上げ（画像カバレッジ向上）
                 print(f'[DEBUG] OGP プリフェッチ: {count}件 起動（上限到達）')
                 return
     print(f'[DEBUG] OGP プリフェッチ: {count}件 起動')
+
+
+def _enqueue_missing_ogp(news: dict, limit: int = 15) -> None:
+    """リクエストごとに OGP 未取得の記事を最大 limit 件キューに追加（キャッシュ更新外の補充用）"""
+    count = 0
+    for articles in news.values():
+        for art in articles:
+            if count >= limit:
+                return
+            link = art.get('link', '')
+            if not link or link == '#' or art.get('image'):
+                continue
+            with _ogp_lock:
+                if link in _ogp_cache:
+                    continue
+            _ogp_executor.submit(_fetch_ogp, link)
+            count += 1
+    if count:
+        print(f'[DEBUG] _enqueue_missing_ogp: {count}件 追加フェッチ起動')
 
 
 # ─── RSSエントリ画像取得 ──────────────────────────────────────────
@@ -2317,6 +2336,9 @@ def index():
                     art = {**art, 'image': ogp}   # シャローコピー（元 dict は不変）
             enriched.append(art)
         news_enriched[cat] = enriched
+
+    # OGP: キャッシュ更新後も未取得の記事を補充（ページ表示をブロックしない）
+    threading.Thread(target=_enqueue_missing_ogp, args=(news_enriched,), daemon=True).start()
 
     s_pool    = news_enriched.get('政治', []) + news_enriched.get('経済', [])
     s_article = s_pool[0] if s_pool else None

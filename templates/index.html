@@ -347,6 +347,12 @@
       width: 80px; height: 58px; object-fit: cover;
       border-radius: 2px; flex-shrink: 0; background: var(--bg);
     }
+    /* 画像なし記事のプレースホルダー：レイアウト幅を統一してガタつきを防ぐ */
+    .art-thumb-ph {
+      width: 80px; height: 58px; flex-shrink: 0;
+      border-radius: 2px;
+      background: linear-gradient(135deg, var(--border-lt) 0%, var(--border) 100%);
+    }
     .art-title {
       font-family: var(--font-h); font-size: .9rem; font-weight: 700;
       color: var(--navy-dark); line-height: 1.56;
@@ -545,8 +551,12 @@
     /* ── モバイル 1カラム最適化 ── */
     @media(max-width:640px){
       .sidebar { grid-template-columns: 1fr; }
-      .mh-left, .mh-right { display: none; }
-      .mh-top { grid-template-columns: 1fr; }
+      .mh-left { display: none; }
+      /* テーマボタンだけ残す（更新ボタン・更新日時は非表示） */
+      .btn-refresh, .mh-edition { display: none; }
+      .mh-right { display: flex; align-items: center; justify-content: flex-end; }
+      /* 3カラム（空スペーサー | ロゴ中央 | テーマボタン）でロゴを正確に中央に */
+      .mh-top { grid-template-columns: 40px 1fr 40px; }
       .mh-logo { font-size: 1.6rem; letter-spacing: .22em; }
       /* ボトムナビ分の余白確保（safe-area-inset-bottom はiPhone Xノッチ対応） */
       .page { padding: 16px 14px calc(72px + env(safe-area-inset-bottom, 0px)); }
@@ -579,6 +589,7 @@
 
       /* ── サムネイル：高さを少し拡大 ── */
       .art-thumb { width: 82px; height: 68px; }
+      .art-thumb-ph { width: 82px; height: 68px; }
 
       /* ── サマリー：2行・フォントは維持 ── */
       .art-summary {
@@ -795,11 +806,12 @@
         <div class="overview-hd">
           <div class="overview-title">🗞 主要ニュース整理</div>
           <div class="overview-badges">
-            <span class="ov-badge ov-badge-ai">✦ AIによる分析</span>
             {% if news_overview.source in ['gemini', 'gemini_cached'] %}
-              <span class="ov-badge ov-badge-gemini">● Gemini{% if news_overview.source == 'gemini_cached' %}キャッシュ{% endif %}</span>
+              <span class="ov-badge ov-badge-ai">✦ AIによる分析</span>
+              <span class="ov-badge ov-badge-gemini">● Gemini{% if news_overview.source == 'gemini_cached' %} キャッシュ{% endif %}</span>
+            {% else %}
+              <span class="ov-badge ov-badge-tmpl">📰 自動まとめ</span>
             {% endif %}
-            {# API失敗・キー未設定時はバッジ非表示（ユーザーに不安を与えないため）#}
           </div>
         </div>
         {% if news_overview.themes %}
@@ -835,7 +847,7 @@
                   {% if art.published %}<span class="art-time">{{ art.published }}</span>{% endif %}
                 </div>
               </div>
-              {% if art.image %}<img class="art-thumb" src="{{ art.image }}" alt="" loading="lazy" onerror="this.style.display='none'">{% endif %}
+              {% if art.image %}<img class="art-thumb" src="{{ art.image }}" alt="" loading="lazy" onerror="this.outerHTML='<div class=\'art-thumb art-thumb-ph\' aria-hidden=\'true\'></div>'">{% else %}<div class="art-thumb art-thumb-ph" aria-hidden="true"></div>{% endif %}
             </div>
           {% endfor %}
         </div>
@@ -855,7 +867,7 @@
                 {% if art.published %}<span class="art-time">{{ art.published }}</span>{% endif %}
               </div>
             </div>
-            {% if art.image %}<img class="art-thumb" src="{{ art.image }}" alt="" loading="lazy" onerror="this.style.display='none'">{% endif %}
+            {% if art.image %}<img class="art-thumb" src="{{ art.image }}" alt="" loading="lazy" onerror="this.outerHTML='<div class=\'art-thumb art-thumb-ph\' aria-hidden=\'true\'></div>'">{% else %}<div class="art-thumb art-thumb-ph" aria-hidden="true"></div>{% endif %}
           </div>
         {% endfor %}{% else %}<div class="no-art">記事を取得中です…</div>{% endif %}
       </section>
@@ -874,7 +886,7 @@
                 {% if art.published %}<span class="art-time">{{ art.published }}</span>{% endif %}
               </div>
             </div>
-            {% if art.image %}<img class="art-thumb" src="{{ art.image }}" alt="" loading="lazy" onerror="this.style.display='none'">{% endif %}
+            {% if art.image %}<img class="art-thumb" src="{{ art.image }}" alt="" loading="lazy" onerror="this.outerHTML='<div class=\'art-thumb art-thumb-ph\' aria-hidden=\'true\'></div>'">{% else %}<div class="art-thumb art-thumb-ph" aria-hidden="true"></div>{% endif %}
           </div>
         {% endfor %}{% else %}<div class="no-art">記事を取得中です…</div>{% endif %}
       </section>
@@ -893,7 +905,7 @@
                 {% if art.published %}<span class="art-time">{{ art.published }}</span>{% endif %}
               </div>
             </div>
-            {% if art.image %}<img class="art-thumb" src="{{ art.image }}" alt="" loading="lazy" onerror="this.style.display='none'">{% endif %}
+            {% if art.image %}<img class="art-thumb" src="{{ art.image }}" alt="" loading="lazy" onerror="this.outerHTML='<div class=\'art-thumb art-thumb-ph\' aria-hidden=\'true\'></div>'">{% else %}<div class="art-thumb art-thumb-ph" aria-hidden="true"></div>{% endif %}
           </div>
         {% endfor %}{% else %}<div class="no-art">記事を取得中です…</div>{% endif %}
       </section>
@@ -912,7 +924,7 @@
                 {% if art.published %}<span class="art-time">{{ art.published }}</span>{% endif %}
               </div>
             </div>
-            {% if art.image %}<img class="art-thumb" src="{{ art.image }}" alt="" loading="lazy" onerror="this.style.display='none'">{% endif %}
+            {% if art.image %}<img class="art-thumb" src="{{ art.image }}" alt="" loading="lazy" onerror="this.outerHTML='<div class=\'art-thumb art-thumb-ph\' aria-hidden=\'true\'></div>'">{% else %}<div class="art-thumb art-thumb-ph" aria-hidden="true"></div>{% endif %}
           </div>
         {% endfor %}{% else %}<div class="no-art">記事を取得中です…</div>{% endif %}
       </section>
@@ -931,7 +943,7 @@
                 {% if art.published %}<span class="art-time">{{ art.published }}</span>{% endif %}
               </div>
             </div>
-            {% if art.image %}<img class="art-thumb" src="{{ art.image }}" alt="" loading="lazy" onerror="this.style.display='none'">{% endif %}
+            {% if art.image %}<img class="art-thumb" src="{{ art.image }}" alt="" loading="lazy" onerror="this.outerHTML='<div class=\'art-thumb art-thumb-ph\' aria-hidden=\'true\'></div>'">{% else %}<div class="art-thumb art-thumb-ph" aria-hidden="true"></div>{% endif %}
           </div>
         {% endfor %}{% else %}<div class="no-art">記事を取得中です…</div>{% endif %}
       </section>
@@ -950,7 +962,7 @@
                 {% if art.published %}<span class="art-time">{{ art.published }}</span>{% endif %}
               </div>
             </div>
-            {% if art.image %}<img class="art-thumb" src="{{ art.image }}" alt="" loading="lazy" onerror="this.style.display='none'">{% endif %}
+            {% if art.image %}<img class="art-thumb" src="{{ art.image }}" alt="" loading="lazy" onerror="this.outerHTML='<div class=\'art-thumb art-thumb-ph\' aria-hidden=\'true\'></div>'">{% else %}<div class="art-thumb art-thumb-ph" aria-hidden="true"></div>{% endif %}
           </div>
         {% endfor %}{% else %}<div class="no-art">記事を取得中です…</div>{% endif %}
       </section>
