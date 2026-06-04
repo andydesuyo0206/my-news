@@ -107,45 +107,55 @@ _ai_cache_ts:      float = 0.0
 _ai_comment_cache: dict  = {}    # (旧) 記事別コメントキャッシュ ※後方互換のため残置
 _ai_batch_cache:   dict  = {}    # 全AIコンテンツ統合キャッシュ（overview+shasetsu+picks）
 _ai_batch_ts:      float = 0.0
-AI_CACHE_TTL             = 7200  # 2時間（Gemini 無料枠 1500 RPD 節約のため）
+_ai_batch_lock             = threading.Lock()  # 同時呼び出し防止（429対策）
+AI_CACHE_TTL             = 14400  # 4時間（2.5-flash は 250 RPD と少ないため延長）
 
 
 def _call_claude(prompt: str, max_tokens: int = 300) -> str:
     """Gemini 2.5 Flash REST API でテキスト生成（パッケージ不要）。失敗時は空文字
     ※ gemini-2.0-flash は 2026-06-01 廃止 → gemini-2.5-flash に移行済み
+    ※ 429 時は 15 秒待って 1 回リトライ（10 RPM 制限対策）
     """
     if not GEMINI_KEY:
         print('[DEBUG] GEMINI_KEY 未設定 → テンプレート使用')
         return ''
-    try:
-        url  = (
-            'https://generativelanguage.googleapis.com/v1beta'
-            f'/models/gemini-2.5-flash:generateContent?key={GEMINI_KEY}'
-        )
-        body = json.dumps({
-            'contents': [{'parts': [{'text': prompt}]}],
-            'generationConfig': {
-                'maxOutputTokens': max_tokens,
-                'temperature': 0.7,
-            },
-        }).encode()
-        req = urllib.request.Request(
-            url, data=body,
-            headers={'Content-Type': 'application/json'},
-            method='POST',
-        )
-        with urllib.request.urlopen(req, timeout=15) as resp:
-            data = json.loads(resp.read())
-            text = data['candidates'][0]['content']['parts'][0]['text'].strip()
-            print(f'[DEBUG] Gemini 生成成功 ({len(text)}文字)')
-            return text
-    except urllib.error.HTTPError as e:
-        body_txt = e.read().decode()
-        print(f'[WARN] Gemini API HTTPError {e.code}: {body_txt[:200]}')
-        return ''
-    except Exception as e:
-        print(f'[WARN] Gemini API 失敗: {type(e).__name__}: {e}')
-        return ''
+
+    url = (
+        'https://generativelanguage.googleapis.com/v1beta'
+        f'/models/gemini-2.5-flash:generateContent?key={GEMINI_KEY}'
+    )
+    body = json.dumps({
+        'contents': [{'parts': [{'text': prompt}]}],
+        'generationConfig': {
+            'maxOutputTokens': max_tokens,
+            'temperature': 0.7,
+        },
+    }).encode()
+
+    for attempt in range(2):   # 最大2回試行（初回 + 429リトライ1回）
+        try:
+            req = urllib.request.Request(
+                url, data=body,
+                headers={'Content-Type': 'application/json'},
+                method='POST',
+            )
+            with urllib.request.urlopen(req, timeout=20) as resp:
+                data = json.loads(resp.read())
+                text = data['candidates'][0]['content']['parts'][0]['text'].strip()
+                print(f'[DEBUG] Gemini 生成成功 ({len(text)}文字)')
+                return text
+        except urllib.error.HTTPError as e:
+            body_txt = e.read().decode()
+            print(f'[WARN] Gemini API HTTPError {e.code} (attempt {attempt+1}): {body_txt[:200]}')
+            if e.code == 429 and attempt == 0:
+                print('[WARN] 429 Too Many Requests → 15秒待ってリトライ')
+                time.sleep(15)
+                continue
+            return ''
+        except Exception as e:
+            print(f'[WARN] Gemini API 失敗: {type(e).__name__}: {e}')
+            return ''
+    return ''
 
 
 def strip_html(text: str) -> str:
@@ -2110,15 +2120,28 @@ def _build_highlights(news: dict) -> list:
 def _refresh_ai_batch(news: dict, s_article: dict | None) -> dict:
     """全AIコンテンツを 1回の API コールで生成し AI_CACHE_TTL 秒キャッシュ。
     overview / shasetsu_comment / expert_picks を一括生成。
-    5コール → 1コール削減で Gemini 無料枠 (1,500 RPD) 枯渇を防止。
+    ロック付きで同時呼び出しを防止（429 Too Many Requests 対策）。
     """
     global _ai_batch_cache, _ai_batch_ts
 
-    # ── キャッシュヒット ────────────────────────────────────────────
+    # ── キャッシュヒット（ロック前チェック：高速パス） ──────────────
     if _ai_batch_cache and time.time() - _ai_batch_ts < AI_CACHE_TTL:
         remain = int((AI_CACHE_TTL - (time.time() - _ai_batch_ts)) / 60)
         print(f'[DEBUG] _refresh_ai_batch: キャッシュ済み（残り{remain}分）')
         return _ai_batch_cache
+
+    # ── ロック取得（同時リクエストが重なっても API は 1 回だけ呼ぶ） ──
+    with _ai_batch_lock:
+        # ロック待ち中に別スレッドがキャッシュを更新した場合はそれを使う
+        if _ai_batch_cache and time.time() - _ai_batch_ts < AI_CACHE_TTL:
+            print('[DEBUG] _refresh_ai_batch: ロック待ち中に別スレッドが更新済み')
+            return _ai_batch_cache
+        return _refresh_ai_batch_locked(news, s_article)
+
+
+def _refresh_ai_batch_locked(news: dict, s_article: dict | None) -> dict:
+    """_refresh_ai_batch の本体（_ai_batch_lock 取得済み前提で呼ぶ）"""
+    global _ai_batch_cache, _ai_batch_ts
 
     # ── 共通データ準備 ───────────────────────────────────────────────
     day      = datetime.now(JST).timetuple().tm_yday

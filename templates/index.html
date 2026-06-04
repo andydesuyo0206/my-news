@@ -551,12 +551,13 @@
     /* ── モバイル 1カラム最適化 ── */
     @media(max-width:640px){
       .sidebar { grid-template-columns: 1fr; }
-      .mh-left { display: none; }
-      /* テーマボタンだけ残す（更新ボタン・更新日時は非表示） */
+      /* display:none だとグリッドから消えてロゴが左端にずれる →
+         visibility:hidden でレイアウト上の幅は保持しつつ非表示にする */
+      .mh-left { visibility: hidden; pointer-events: none; overflow: hidden; }
       .btn-refresh, .mh-edition { display: none; }
       .mh-right { display: flex; align-items: center; justify-content: flex-end; }
-      /* 3カラム（空スペーサー | ロゴ中央 | テーマボタン）でロゴを正確に中央に */
-      .mh-top { grid-template-columns: 40px 1fr 40px; }
+      /* 左(mh-left) | 中央(ロゴ) | 右(テーマボタン) の3カラムを維持 */
+      .mh-top { grid-template-columns: 1fr auto 1fr; }
       .mh-logo { font-size: 1.6rem; letter-spacing: .22em; }
       /* ボトムナビ分の余白確保（safe-area-inset-bottom はiPhone Xノッチ対応） */
       .page { padding: 16px 14px calc(72px + env(safe-area-inset-bottom, 0px)); }
@@ -836,7 +837,7 @@
       <!-- 主要ニュース一覧（overviewの下・ハイライトを除いた追加記事） -->
       {% set main_arts = news.get('主要', []) %}
       {% if main_arts %}
-        <div class="ns" style="--cat:#1e4d8c; margin-top:-1px; border-radius:0 0 var(--radius) var(--radius);">
+        <div class="ns" style="--cat:#1e4d8c; margin-top:-20px; border-radius:0 0 var(--radius) var(--radius);">
           {% for art in main_arts[:5] %}
             <div class="art" onclick="window.open('{{ art.link }}','_blank')">
               <div class="art-body">
