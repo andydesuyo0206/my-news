@@ -111,14 +111,16 @@ AI_CACHE_TTL             = 7200  # 2時間（Gemini 無料枠 1500 RPD 節約の
 
 
 def _call_claude(prompt: str, max_tokens: int = 300) -> str:
-    """Gemini 2.0 Flash REST API でテキスト生成（パッケージ不要）。失敗時は空文字"""
+    """Gemini 2.5 Flash REST API でテキスト生成（パッケージ不要）。失敗時は空文字
+    ※ gemini-2.0-flash は 2026-06-01 廃止 → gemini-2.5-flash に移行済み
+    """
     if not GEMINI_KEY:
         print('[DEBUG] GEMINI_KEY 未設定 → テンプレート使用')
         return ''
     try:
         url  = (
             'https://generativelanguage.googleapis.com/v1beta'
-            f'/models/gemini-2.0-flash:generateContent?key={GEMINI_KEY}'
+            f'/models/gemini-2.5-flash:generateContent?key={GEMINI_KEY}'
         )
         body = json.dumps({
             'contents': [{'parts': [{'text': prompt}]}],
