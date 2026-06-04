@@ -554,9 +554,16 @@
       /* display:none だとグリッドから消えてロゴが左端にずれる →
          visibility:hidden でレイアウト上の幅は保持しつつ非表示にする */
       .mh-left { visibility: hidden; pointer-events: none; overflow: hidden; }
-      .btn-refresh, .mh-edition { display: none; }
-      .mh-right { display: flex; align-items: center; justify-content: flex-end; }
-      /* 左(mh-left) | 中央(ロゴ) | 右(テーマボタン) の3カラムを維持 */
+      /* 更新日時は非表示。更新ボタンはアイコンのみに縮小 */
+      .mh-edition { display: none; }
+      .btn-refresh-label { display: none; }
+      .btn-refresh {
+        width: 30px; height: 30px; padding: 0; border-radius: 50%;
+        display: flex; align-items: center; justify-content: center;
+        font-size: .9rem;
+      }
+      .mh-right { display: flex; align-items: center; justify-content: flex-end; gap: 6px; }
+      /* 左(mh-left) | 中央(ロゴ) | 右(ボタン群) の3カラムを維持 */
       .mh-top { grid-template-columns: 1fr auto 1fr; }
       .mh-logo { font-size: 1.6rem; letter-spacing: .22em; }
       /* ボトムナビ分の余白確保（safe-area-inset-bottom はiPhone Xノッチ対応） */
@@ -772,7 +779,10 @@
       <div class="mh-right">
         <div class="mh-right-row">
           <form action="/refresh" method="post" style="margin:0">
-            <button class="btn-refresh" type="submit">↻ 最新の情報に更新</button>
+            <button class="btn-refresh" type="submit">
+              <span class="btn-refresh-icon" aria-hidden="true">↻</span>
+              <span class="btn-refresh-label">最新の情報に更新</span>
+            </button>
           </form>
           <button id="theme-toggle" class="btn-theme" aria-label="テーマ切り替え" title="ライト／ダーク切替">
             <span id="theme-icon">🌙</span>
@@ -834,10 +844,11 @@
         {% endif %}
       </section>
 
-      <!-- 主要ニュース一覧（overviewの下・ハイライトを除いた追加記事） -->
+      <!-- 主要ニュース一覧（overview の続き・独立セクションとして表示） -->
       {% set main_arts = news.get('主要', []) %}
       {% if main_arts %}
-        <div class="ns" style="--cat:#1e4d8c; margin-top:-20px; border-radius:0 0 var(--radius) var(--radius);">
+        <section id="shuyo" class="ns" style="--cat:#1e4d8c;">
+          <div class="ns-hd"><span>🗞</span><h2 class="ns-hd-title">主要ニュース</h2></div>
           {% for art in main_arts[:5] %}
             <div class="art" onclick="window.open('{{ art.link }}','_blank')">
               <div class="art-body">
@@ -851,7 +862,7 @@
               {% if art.image %}<img class="art-thumb" src="{{ art.image }}" alt="" loading="lazy" onerror="this.outerHTML='<div class=\'art-thumb art-thumb-ph\' aria-hidden=\'true\'></div>'">{% else %}<div class="art-thumb art-thumb-ph" aria-hidden="true"></div>{% endif %}
             </div>
           {% endfor %}
-        </div>
+        </section>
       {% endif %}
 
       <!-- 経済 -->

@@ -97,8 +97,9 @@ CACHE_TTL = 1800  # 30分
 
 # ─── Pixabay API（画像フォールバック。Render環境変数 PIXABAY_API_KEY を設定） ──
 PIXABAY_KEY = os.environ.get('PIXABAY_API_KEY', '')
-_pixabay_cache:  dict = {}
-_kotoba_wiki_ok: dict = {}  # wiki_title → True/False（Wikipedia 存在確認キャッシュ）
+_pixabay_cache:  dict = {}   # query → list[str]（最大5件のURL保持）
+_pixabay_idx:    dict = {}   # query → 次に返すインデックス（記事ごとに異なる画像）
+_kotoba_wiki_ok: dict = {}   # wiki_title → True/False（Wikipedia 存在確認キャッシュ）
 
 # ─── Gemini API（概観・コメント生成。Render環境変数 GEMINI_API_KEY を設定） ──
 GEMINI_KEY       = os.environ.get('GEMINI_API_KEY', '')
@@ -197,11 +198,19 @@ def get_wiki_thumb(title: str, lang: str = 'ja') -> str:
 # ─── Pixabay 画像取得（Wikipedia に画像がない場合のフォールバック） ──────
 
 def get_pixabay_image(query: str) -> str:
-    """Pixabay API でキーワード検索し画像URLを返す（メモリキャッシュ付き）"""
+    """Pixabay API でキーワード検索し画像URLを返す。
+    同一クエリでも複数記事が呼ぶと順番に別画像を返す（重複防止）。
+    """
     if not query or not PIXABAY_KEY:
         return ''
+    # キャッシュ済み → インデックスを進めて次のURLを返す
     if query in _pixabay_cache:
-        return _pixabay_cache[query]
+        urls = _pixabay_cache[query]
+        if not urls:
+            return ''
+        idx = _pixabay_idx.get(query, 0)
+        _pixabay_idx[query] = (idx + 1) % len(urls)
+        return urls[idx]
     try:
         params = urllib.parse.urlencode({
             'key':          PIXABAY_KEY,
@@ -209,7 +218,7 @@ def get_pixabay_image(query: str) -> str:
             'lang':         'ja',
             'image_type':   'photo',
             'orientation':  'horizontal',
-            'per_page':     3,
+            'per_page':     5,   # 3→5 件取得して多様性を確保
             'safesearch':   'true',
         })
         req = urllib.request.Request(
@@ -217,14 +226,15 @@ def get_pixabay_image(query: str) -> str:
             headers={'User-Agent': 'AsaNagi/1.0 (RSS Aggregator; contact: noreply@example.com)'}
         )
         with urllib.request.urlopen(req, timeout=4) as resp:
-            data  = json.loads(resp.read())
-            hits  = data.get('hits', [])
-            img   = hits[0].get('webformatURL', '') if hits else ''
-            _pixabay_cache[query] = img
-            return img
+            data = json.loads(resp.read())
+            hits = data.get('hits', [])
+            urls = [h['webformatURL'] for h in hits if h.get('webformatURL')]
+            _pixabay_cache[query] = urls
+            _pixabay_idx[query]   = 1 % max(len(urls), 1)   # 次回は2枚目から
+            return urls[0] if urls else ''
     except Exception as e:
         print(f'[WARN] Pixabay fetch 失敗 ({query}): {e}')
-        _pixabay_cache[query] = ''
+        _pixabay_cache[query] = []
         return ''
 
 
