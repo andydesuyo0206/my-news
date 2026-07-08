@@ -49,7 +49,7 @@ FEEDS = {
         ('日経ビジネス',   'https://business.nikkei.com/rss/sns/nb.rdf'),  # 日経系を先頭に
         ('ダイヤモンドOL', 'https://diamond.jp/list/feed/rss'),            # 日経寄り強化
         ('東洋経済',       'https://toyokeizai.net/list/feed/rss'),
-        ('Reuters 経済',   'https://feeds.reuters.com/reuters/businessNews'),
+        ('Bloomberg',      'https://feeds.bloomberg.com/markets/news.rss'),  # 英語・高信頼（旧Reuters差替え）
         ('プレジデントOL', 'https://president.jp/list/feed/rss'),
         ('財経新聞 経済',  'https://www.zaikei.co.jp/rss/economy.rdf'),
         ('NHK経済',        'https://www3.nhk.or.jp/rss/news/cat3.xml'),  # 末尾
@@ -60,11 +60,13 @@ FEEDS = {
         ('朝日新聞 政治', 'https://www.asahi.com/rss/politics/index.rdf'),
         ('NHK政治',       'https://www3.nhk.or.jp/rss/news/cat4.xml'),   # 末尾
     ],
-    '国際': [  # 日本語で読めるソースに統一
+    '国際': [  # 日本語ソース優先＋高信頼の海外ソース
         ('AFP BB News',        'https://feeds.afpbb.com/rss/afpbb/afpbbnews'),
         ('BBC Japan',          'https://feeds.bbci.co.uk/japanese/rss.xml'),
-        ('Reuters JP',         'https://jp.reuters.com/rssFeed/worldNews'),
+        ('CNN.co.jp',          'https://feeds.cnn.co.jp/rss/cnn/cnn.rdf'),   # 日本語（旧Reuters差替え）
         ('ニューズウィーク日本', 'https://www.newsweekjapan.jp/feed/'),
+        ('DW News',            'https://rss.dw.com/rdf/rss-en-world'),        # 英語・独公共放送
+        ('ABC Australia',      'https://www.abc.net.au/news/feed/51120/rss.xml'),  # 英語・豪公共放送
         ('Yahoo! 国際',        'https://news.yahoo.co.jp/rss/topics/world.xml'),
         ('NHK国際',            'https://www3.nhk.or.jp/rss/news/cat5.xml'),
     ],
@@ -73,6 +75,8 @@ FEEDS = {
         ('日経クロステック', 'https://xtech.nikkei.com/rss/index.rdf'),   # 日経IT部門
         ('Wired JP',      'https://wired.jp/rss/'),
         ('GIGAZINE',      'https://gigazine.net/news/rss_2.0/'),
+        ('The Verge',     'https://www.theverge.com/rss/index.xml'),          # 英語・テック専門
+        ('Bloomberg Tech', 'https://feeds.bloomberg.com/technology/news.rss'), # 英語・テック×経済
         ('CNET Japan',    'http://feeds.japan.cnet.com/rss/cnet/all.rdf'),
         ('Impress',       'https://www.watch.impress.co.jp/data/rss/1.0/ipw/feed.rdf'),
     ],
@@ -97,8 +101,9 @@ CACHE_TTL = 1800  # 30分
 
 # ─── Pixabay API（画像フォールバック。Render環境変数 PIXABAY_API_KEY を設定） ──
 PIXABAY_KEY = os.environ.get('PIXABAY_API_KEY', '')
-_pixabay_cache:  dict = {}   # query → list[str]（最大5件のURL保持）
-_pixabay_idx:    dict = {}   # query → 次に返すインデックス（記事ごとに異なる画像）
+_pixabay_cache:  dict = {}   # query → (list[str], 取得時刻)。URLは約24hで失効するためTTL管理
+_pixabay_idx:    dict = {}   # query → 次に返すインデックス（呼び出しごとに異なる画像）
+_PIXABAY_TTL          = 6 * 3600   # 6時間で再取得（Pixabay の /get/ URL 失効対策）
 _kotoba_wiki_ok: dict = {}   # wiki_title → True/False（Wikipedia 存在確認キャッシュ）
 
 # ─── Gemini API（概観・コメント生成。Render環境変数 GEMINI_API_KEY を設定） ──
@@ -110,30 +115,66 @@ _ai_batch_cache:   dict  = {}    # 全AIコンテンツ統合キャッシュ（o
 _ai_batch_ts:      float = 0.0
 _ai_batch_lock             = threading.Lock()  # 同時呼び出し防止（429対策）
 AI_CACHE_TTL             = 14400  # 4時間（2.5-flash は 250 RPD と少ないため延長）
+# ワーカー再起動でメモリキャッシュが消えても API を叩き直さないようディスクにも保存
+_AI_CACHE_FILE = os.path.join(os.environ.get('TMPDIR') or os.environ.get('TEMP') or '/tmp',
+                              'asanagi_ai_cache.json')
+
+
+def _load_ai_cache_from_disk() -> bool:
+    """ディスクキャッシュを読み込み。TTL内なら True（グローバルに反映）"""
+    global _ai_batch_cache, _ai_batch_ts
+    try:
+        with open(_AI_CACHE_FILE, encoding='utf-8') as f:
+            saved = json.load(f)
+        if time.time() - saved.get('ts', 0) < AI_CACHE_TTL and saved.get('data'):
+            _ai_batch_cache = saved['data']
+            _ai_batch_ts    = saved['ts']
+            print('[DEBUG] AIキャッシュ: ディスクから復元成功')
+            return True
+    except FileNotFoundError:
+        pass
+    except Exception as e:
+        print(f'[WARN] AIキャッシュ復元失敗: {type(e).__name__}: {e}')
+    return False
+
+
+def _save_ai_cache_to_disk() -> None:
+    try:
+        with open(_AI_CACHE_FILE, 'w', encoding='utf-8') as f:
+            json.dump({'ts': _ai_batch_ts, 'data': _ai_batch_cache}, f, ensure_ascii=False)
+        print('[DEBUG] AIキャッシュ: ディスク保存完了')
+    except Exception as e:
+        print(f'[WARN] AIキャッシュ保存失敗: {type(e).__name__}: {e}')
+
+
+# 429 時のフォールバックチェーン：flash が枯れたら flash-lite（無料枠が別カウント・上限も大きい）
+_GEMINI_MODELS = ['gemini-2.5-flash', 'gemini-2.5-flash-lite']
 
 
 def _call_claude(prompt: str, max_tokens: int = 300) -> str:
-    """Gemini 2.5 Flash REST API でテキスト生成（パッケージ不要）。失敗時は空文字
-    ※ gemini-2.0-flash は 2026-06-01 廃止 → gemini-2.5-flash に移行済み
-    ※ 429 時は 15 秒待って 1 回リトライ（10 RPM 制限対策）
+    """Gemini REST API でテキスト生成（パッケージ不要）。失敗時は空文字。
+    ※ gemini-2.0-flash は 2026-06-01 廃止 → 2.5 系へ移行済み
+    ※ 429 時はスリープせず即 flash-lite へ切替（Webリクエストをブロックしない）
+    ※ thinkingBudget=0 で思考トークンを無効化（クォータ節約＋応答安定）
     """
     if not GEMINI_KEY:
         print('[DEBUG] GEMINI_KEY 未設定 → テンプレート使用')
         return ''
 
-    url = (
-        'https://generativelanguage.googleapis.com/v1beta'
-        f'/models/gemini-2.5-flash:generateContent?key={GEMINI_KEY}'
-    )
     body = json.dumps({
         'contents': [{'parts': [{'text': prompt}]}],
         'generationConfig': {
             'maxOutputTokens': max_tokens,
             'temperature': 0.7,
+            'thinkingConfig': {'thinkingBudget': 0},
         },
     }).encode()
 
-    for attempt in range(2):   # 最大2回試行（初回 + 429リトライ1回）
+    for model in _GEMINI_MODELS:
+        url = (
+            'https://generativelanguage.googleapis.com/v1beta'
+            f'/models/{model}:generateContent?key={GEMINI_KEY}'
+        )
         try:
             req = urllib.request.Request(
                 url, data=body,
@@ -143,19 +184,18 @@ def _call_claude(prompt: str, max_tokens: int = 300) -> str:
             with urllib.request.urlopen(req, timeout=20) as resp:
                 data = json.loads(resp.read())
                 text = data['candidates'][0]['content']['parts'][0]['text'].strip()
-                print(f'[DEBUG] Gemini 生成成功 ({len(text)}文字)')
+                print(f'[DEBUG] Gemini 生成成功 ({model}, {len(text)}文字)')
                 return text
         except urllib.error.HTTPError as e:
             body_txt = e.read().decode()
-            print(f'[WARN] Gemini API HTTPError {e.code} (attempt {attempt+1}): {body_txt[:200]}')
-            if e.code == 429 and attempt == 0:
-                print('[WARN] 429 Too Many Requests → 15秒待ってリトライ')
-                time.sleep(15)
-                continue
+            print(f'[WARN] Gemini API HTTPError {e.code} ({model}): {body_txt[:200]}')
+            if e.code == 429:
+                continue   # 次のモデルへフォールバック
             return ''
         except Exception as e:
-            print(f'[WARN] Gemini API 失敗: {type(e).__name__}: {e}')
+            print(f'[WARN] Gemini API 失敗 ({model}): {type(e).__name__}: {e}')
             return ''
+    print('[WARN] Gemini 全モデルで 429 → テンプレートにフォールバック')
     return ''
 
 
@@ -198,14 +238,16 @@ def get_wiki_thumb(title: str, lang: str = 'ja') -> str:
 # ─── Pixabay 画像取得（Wikipedia に画像がない場合のフォールバック） ──────
 
 def get_pixabay_image(query: str) -> str:
-    """Pixabay API でキーワード検索し画像URLを返す。
-    同一クエリでも複数記事が呼ぶと順番に別画像を返す（重複防止）。
+    """Pixabay API でキーワード検索し画像URLを返す（ウィジェット用フォールバック専用）。
+    ※ Pixabay の /get/ URL は約24時間で失効するため 6h TTL で再取得する。
+    ※ ニュース記事のサムネイルには使わない（内容と無関係な画像になるため。OGP を使う）
     """
     if not query or not PIXABAY_KEY:
         return ''
-    # キャッシュ済み → インデックスを進めて次のURLを返す
-    if query in _pixabay_cache:
-        urls = _pixabay_cache[query]
+    # TTL 内キャッシュ → インデックスを進めて次のURLを返す
+    cached = _pixabay_cache.get(query)
+    if cached and time.time() - cached[1] < _PIXABAY_TTL:
+        urls = cached[0]
         if not urls:
             return ''
         idx = _pixabay_idx.get(query, 0)
@@ -218,7 +260,7 @@ def get_pixabay_image(query: str) -> str:
             'lang':         'ja',
             'image_type':   'photo',
             'orientation':  'horizontal',
-            'per_page':     5,   # 3→5 件取得して多様性を確保
+            'per_page':     5,
             'safesearch':   'true',
         })
         req = urllib.request.Request(
@@ -229,12 +271,12 @@ def get_pixabay_image(query: str) -> str:
             data = json.loads(resp.read())
             hits = data.get('hits', [])
             urls = [h['webformatURL'] for h in hits if h.get('webformatURL')]
-            _pixabay_cache[query] = urls
-            _pixabay_idx[query]   = 1 % max(len(urls), 1)   # 次回は2枚目から
+            _pixabay_cache[query] = (urls, time.time())
+            _pixabay_idx[query]   = 1 % max(len(urls), 1)
             return urls[0] if urls else ''
     except Exception as e:
         print(f'[WARN] Pixabay fetch 失敗 ({query}): {e}')
-        _pixabay_cache[query] = []
+        _pixabay_cache[query] = ([], time.time())
         return ''
 
 
@@ -308,7 +350,7 @@ def extract_keyword(title: str, category: str = '') -> str:
 
 _ogp_cache:    dict = {}   # URL → image URL（''は取得済み・画像なし）
 _ogp_lock              = threading.Lock()
-_ogp_executor          = ThreadPoolExecutor(max_workers=2, thread_name_prefix='ogp')  # メモリ節約のため2に制限
+_ogp_executor          = ThreadPoolExecutor(max_workers=4, thread_name_prefix='ogp')  # I/Oバウンドのため4並列
 
 # og:image / twitter:image の抽出パターン（属性順不問）
 _OGP_RE = [
@@ -394,13 +436,13 @@ def _prefetch_ogp(news: dict) -> None:
                     continue
             _ogp_executor.submit(_fetch_ogp, link)
             count += 1
-            if count >= 50:   # 15件→50件に引き上げ（画像カバレッジ向上）
+            if count >= 100:   # Pixabay撤去に伴い100件へ拡大（OGPが記事画像の主役）
                 print(f'[DEBUG] OGP プリフェッチ: {count}件 起動（上限到達）')
                 return
     print(f'[DEBUG] OGP プリフェッチ: {count}件 起動')
 
 
-def _enqueue_missing_ogp(news: dict, limit: int = 15) -> None:
+def _enqueue_missing_ogp(news: dict, limit: int = 30) -> None:
     """リクエストごとに OGP 未取得の記事を最大 limit 件キューに追加（キャッシュ更新外の補充用）"""
     count = 0
     for articles in news.values():
@@ -504,9 +546,8 @@ def fetch_feed(source: str, url: str, category: str = '') -> list:
             summary = strip_html(raw)
             title   = entry.get('title', '（タイトルなし）')
             image   = get_entry_image(entry)
-            # RSS に画像がなければ Pixabay でフォールバック（カテゴリ情報で精度向上）
-            if not image and PIXABAY_KEY:
-                image = get_pixabay_image(extract_keyword(title, category))
+            # RSS に画像がなければ OGP バックグラウンド取得に任せる
+            # （Pixabay は内容と無関係な画像＋URL失効があるため記事には使わない）
             pub = fmt_published(entry)
             articles.append({
                 'title':     title,
@@ -2140,6 +2181,10 @@ def _refresh_ai_batch(news: dict, s_article: dict | None) -> dict:
         print(f'[DEBUG] _refresh_ai_batch: キャッシュ済み（残り{remain}分）')
         return _ai_batch_cache
 
+    # ── メモリキャッシュ空 → ディスクキャッシュを試す（再起動対策） ──
+    if not _ai_batch_cache and _load_ai_cache_from_disk():
+        return _ai_batch_cache
+
     # ── ロック取得（同時リクエストが重なっても API は 1 回だけ呼ぶ） ──
     with _ai_batch_lock:
         # ロック待ち中に別スレッドがキャッシュを更新した場合はそれを使う
@@ -2303,6 +2348,7 @@ def _refresh_ai_batch_locked(news: dict, s_article: dict | None) -> dict:
         }
         _ai_batch_cache = result
         _ai_batch_ts    = time.time()
+        _save_ai_cache_to_disk()   # 再起動対策：ディスクにも保存
         return result
 
     except Exception as e:
