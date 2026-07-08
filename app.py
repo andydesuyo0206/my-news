@@ -387,9 +387,9 @@ def _fetch_ogp(url: str) -> None:
                 'Accept-Language': 'ja,en;q=0.8',
             }
         )
-        # 最初の 16 KB だけ取得（<head> 内の og:image はほぼここに収まる）
-        with urllib.request.urlopen(req, timeout=4) as resp:
-            raw = resp.read(16384)
+        # 先頭 48 KB を取得（DW 等は og:image が <head> 後方にあるため窓を拡大）
+        with urllib.request.urlopen(req, timeout=5) as resp:
+            raw = resp.read(49152)
         html = raw.decode('utf-8', errors='replace')
         for pat in _OGP_RE:
             m = pat.search(html)
@@ -529,6 +529,54 @@ def fmt_published(entry) -> str:
     return entry.get('published', '')
 
 
+# ─── 英語ソースの自動翻訳（非公式Google翻訳・キー不要） ──────────────
+# Bloomberg / The Verge / DW / ABC など英語のみのソースは見出し・要約を日本語化する。
+# 翻訳結果はプロセス内キャッシュに永続保持（同一テキストは1回だけ翻訳）。
+
+_ENGLISH_SOURCES = {'Bloomberg', 'Bloomberg Tech', 'The Verge', 'DW News', 'ABC Australia'}
+_trans_cache: dict = {}   # 原文 → 訳文
+
+
+def _translate_lines(lines: list[str]) -> list[str]:
+    """英語テキストのリストを一括で日本語に翻訳（改行区切りで1リクエスト）。
+    失敗時は原文をそのまま返す。各要素はキャッシュして再翻訳を避ける。
+    """
+    if not lines:
+        return []
+    # 未キャッシュのものだけ翻訳対象に
+    todo = [ln for ln in lines if ln and ln not in _trans_cache]
+    if todo:
+        # 改行が要素境界になるので、各要素内の改行は空白に潰す
+        safe = [re.sub(r'\s+', ' ', t).strip() for t in todo]
+        try:
+            params = urllib.parse.urlencode({
+                'client': 'gtx', 'sl': 'en', 'tl': 'ja', 'dt': 't',
+                'q': '\n'.join(safe),
+            })
+            req = urllib.request.Request(
+                f'https://translate.googleapis.com/translate_a/single?{params}',
+                headers={'User-Agent': 'Mozilla/5.0'},
+            )
+            with urllib.request.urlopen(req, timeout=8) as r:
+                data = json.loads(r.read())
+            joined = ''.join(seg[0] for seg in data[0] if seg and seg[0])
+            out = joined.split('\n')
+            if len(out) == len(safe):
+                for orig, ja in zip(todo, out):
+                    _trans_cache[orig] = ja.strip()
+                print(f'[DEBUG] 翻訳成功: {len(todo)}件')
+            else:
+                # 行数がズレたら安全側で原文維持（部分的な誤対応を防ぐ）
+                print(f'[WARN] 翻訳: 行数不一致 in={len(safe)} out={len(out)} → 原文維持')
+                for orig in todo:
+                    _trans_cache[orig] = orig
+        except Exception as e:
+            print(f'[WARN] 翻訳失敗: {type(e).__name__}: {e}')
+            for orig in todo:
+                _trans_cache[orig] = orig
+    return [_trans_cache.get(ln, ln) for ln in lines]
+
+
 def fetch_feed(source: str, url: str, category: str = '') -> list:
     try:
         feed = feedparser.parse(url)
@@ -557,6 +605,16 @@ def fetch_feed(source: str, url: str, category: str = '') -> list:
                 'source':    source,
                 'image':     image,
             })
+
+        # 英語ソースは見出し＋要約を一括翻訳（1フィード=1リクエスト）
+        if source in _ENGLISH_SOURCES and articles:
+            n = len(articles)
+            payload = [a['title'] for a in articles] + [a['summary'] for a in articles]
+            ja = _translate_lines(payload)
+            for i, a in enumerate(articles):
+                a['title']   = ja[i] or a['title']
+                a['summary'] = ja[n + i] or a['summary']
+                a['source']  = f'{source}（翻訳）'
         return articles
     except Exception as e:
         print(f'[WARN] {source} 取得失敗: {e}')
@@ -2288,20 +2346,26 @@ def _refresh_ai_batch_locked(news: dict, s_article: dict | None) -> dict:
         cat_lines_detail.append(line)
 
     prompt = (
-        f"あなたは日本の優秀な新聞記者です。本日{date_str}のニュースを分析し、"
-        "以下のJSON形式のみで回答してください。JSONブロック外にテキストを含めないでください。\n\n"
-        f"[本日のニュース概要]\n{chr(10).join(cat_lines_detail)}\n\n"
+        f"あなたは日本の一流紙の論説デスクです。本日{date_str}の全カテゴリのニュースを俯瞰し、"
+        "「今日一日を構造的に読み解く」分析を書いてください。"
+        "以下のJSON形式のみで回答し、JSONブロック外にテキストを含めないでください。\n\n"
+        f"[本日のニュース一覧（カテゴリ別）]\n{chr(10).join(cat_lines_detail)}\n\n"
         f"[注目記事（論点用）]\n{s_title}（{s_source}）：{s_summary}\n\n"
         f"[AIによる視点用記事]\n{picks_lines}\n\n"
         "指示：\n"
-        "- overview: 今日の主要な動きを3〜4文で。具体的な固有名詞・数字を使い新聞コラム調で。敬体（です・ます）\n"
+        "- overview: 個々のニュースを羅列するのではなく、今日のニュース全体を『構造』として分析する。"
+        "次の3点を必ず含め、地の文でつなげて4〜6文にまとめる："
+        "①今日を貫く最大の潮流・通奏低音は何か（一言で言えば何の日か）。"
+        "②カテゴリを横断して見えてくる関連性・対立軸・因果（例：経済の動きが政治にどう波及するか）。"
+        "③読者が今後どこに注目すべきか。"
+        "固有名詞・数字を具体的に使い、俯瞰と洞察のある論説調で。敬体（です・ます）。\n"
         "- shasetsu: 注目記事について論点・意義・今後の展望を2〜3文で。具体的かつ鋭い視点で。敬体\n"
         "- picks: 各記事について「なぜ重要か」「どんな影響があるか」を2文で。専門的かつ平易に。敬体\n\n"
         '{"overview":"...","shasetsu":"...","picks":['
         '{"category":"カテゴリ","text":"2文コメント"}]}'
     )
 
-    raw = _call_claude(prompt, max_tokens=800)
+    raw = _call_claude(prompt, max_tokens=1100)   # 構造分析overviewの長文化に対応
     if not raw:
         print('[WARN] _refresh_ai_batch: API失敗 → テンプレートにフォールバック')
         return _fallback('template_api_error')
@@ -2438,6 +2502,28 @@ def index():
         news_overview=ai['overview'],
         expert_picks=ai['picks'],
     )
+
+
+@app.route('/api/ogp', methods=['POST'])
+def api_ogp():
+    """クライアント側ハイドレーション用：指定リンクの取得済みOGP画像を返す。
+    ページ表示後、プレースホルダーのままの記事をリロードなしで画像に差し替える。
+    """
+    from flask import request, jsonify
+    payload = request.get_json(silent=True) or {}
+    links   = payload.get('links', [])[:60]   # 1リクエスト最大60件
+    result: dict = {}
+    for link in links:
+        img = _ogp_cache.get(link, '')
+        if img:
+            result[link] = img
+        else:
+            # 未取得ならこの場でバックグラウンド取得を起動（次回ポーリングで拾う）
+            with _ogp_lock:
+                already = link in _ogp_cache
+            if not already and link and link != '#':
+                _ogp_executor.submit(_fetch_ogp, link)
+    return jsonify(result)
 
 
 @app.route('/manifest.json')

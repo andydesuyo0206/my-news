@@ -859,7 +859,7 @@
                   {% if art.published %}<span class="art-time">{{ art.published }}</span>{% endif %}
                 </div>
               </div>
-              {% if art.image %}<img class="art-thumb" src="{{ art.image }}" alt="" loading="lazy" onerror="this.outerHTML='<div class=\'art-thumb art-thumb-ph\' aria-hidden=\'true\'></div>'">{% else %}<div class="art-thumb art-thumb-ph" aria-hidden="true"></div>{% endif %}
+              {% if art.image %}<img class="art-thumb" src="{{ art.image }}" alt="" loading="lazy" onerror="this.outerHTML='<div class=\'art-thumb art-thumb-ph\' aria-hidden=\'true\'></div>'">{% else %}<div class="art-thumb art-thumb-ph" data-ogp="{{ art.link }}" aria-hidden="true"></div>{% endif %}
             </div>
           {% endfor %}
         </section>
@@ -879,7 +879,7 @@
                 {% if art.published %}<span class="art-time">{{ art.published }}</span>{% endif %}
               </div>
             </div>
-            {% if art.image %}<img class="art-thumb" src="{{ art.image }}" alt="" loading="lazy" onerror="this.outerHTML='<div class=\'art-thumb art-thumb-ph\' aria-hidden=\'true\'></div>'">{% else %}<div class="art-thumb art-thumb-ph" aria-hidden="true"></div>{% endif %}
+            {% if art.image %}<img class="art-thumb" src="{{ art.image }}" alt="" loading="lazy" onerror="this.outerHTML='<div class=\'art-thumb art-thumb-ph\' aria-hidden=\'true\'></div>'">{% else %}<div class="art-thumb art-thumb-ph" data-ogp="{{ art.link }}" aria-hidden="true"></div>{% endif %}
           </div>
         {% endfor %}{% else %}<div class="no-art">記事を取得中です…</div>{% endif %}
       </section>
@@ -898,7 +898,7 @@
                 {% if art.published %}<span class="art-time">{{ art.published }}</span>{% endif %}
               </div>
             </div>
-            {% if art.image %}<img class="art-thumb" src="{{ art.image }}" alt="" loading="lazy" onerror="this.outerHTML='<div class=\'art-thumb art-thumb-ph\' aria-hidden=\'true\'></div>'">{% else %}<div class="art-thumb art-thumb-ph" aria-hidden="true"></div>{% endif %}
+            {% if art.image %}<img class="art-thumb" src="{{ art.image }}" alt="" loading="lazy" onerror="this.outerHTML='<div class=\'art-thumb art-thumb-ph\' aria-hidden=\'true\'></div>'">{% else %}<div class="art-thumb art-thumb-ph" data-ogp="{{ art.link }}" aria-hidden="true"></div>{% endif %}
           </div>
         {% endfor %}{% else %}<div class="no-art">記事を取得中です…</div>{% endif %}
       </section>
@@ -917,7 +917,7 @@
                 {% if art.published %}<span class="art-time">{{ art.published }}</span>{% endif %}
               </div>
             </div>
-            {% if art.image %}<img class="art-thumb" src="{{ art.image }}" alt="" loading="lazy" onerror="this.outerHTML='<div class=\'art-thumb art-thumb-ph\' aria-hidden=\'true\'></div>'">{% else %}<div class="art-thumb art-thumb-ph" aria-hidden="true"></div>{% endif %}
+            {% if art.image %}<img class="art-thumb" src="{{ art.image }}" alt="" loading="lazy" onerror="this.outerHTML='<div class=\'art-thumb art-thumb-ph\' aria-hidden=\'true\'></div>'">{% else %}<div class="art-thumb art-thumb-ph" data-ogp="{{ art.link }}" aria-hidden="true"></div>{% endif %}
           </div>
         {% endfor %}{% else %}<div class="no-art">記事を取得中です…</div>{% endif %}
       </section>
@@ -936,7 +936,7 @@
                 {% if art.published %}<span class="art-time">{{ art.published }}</span>{% endif %}
               </div>
             </div>
-            {% if art.image %}<img class="art-thumb" src="{{ art.image }}" alt="" loading="lazy" onerror="this.outerHTML='<div class=\'art-thumb art-thumb-ph\' aria-hidden=\'true\'></div>'">{% else %}<div class="art-thumb art-thumb-ph" aria-hidden="true"></div>{% endif %}
+            {% if art.image %}<img class="art-thumb" src="{{ art.image }}" alt="" loading="lazy" onerror="this.outerHTML='<div class=\'art-thumb art-thumb-ph\' aria-hidden=\'true\'></div>'">{% else %}<div class="art-thumb art-thumb-ph" data-ogp="{{ art.link }}" aria-hidden="true"></div>{% endif %}
           </div>
         {% endfor %}{% else %}<div class="no-art">記事を取得中です…</div>{% endif %}
       </section>
@@ -955,7 +955,7 @@
                 {% if art.published %}<span class="art-time">{{ art.published }}</span>{% endif %}
               </div>
             </div>
-            {% if art.image %}<img class="art-thumb" src="{{ art.image }}" alt="" loading="lazy" onerror="this.outerHTML='<div class=\'art-thumb art-thumb-ph\' aria-hidden=\'true\'></div>'">{% else %}<div class="art-thumb art-thumb-ph" aria-hidden="true"></div>{% endif %}
+            {% if art.image %}<img class="art-thumb" src="{{ art.image }}" alt="" loading="lazy" onerror="this.outerHTML='<div class=\'art-thumb art-thumb-ph\' aria-hidden=\'true\'></div>'">{% else %}<div class="art-thumb art-thumb-ph" data-ogp="{{ art.link }}" aria-hidden="true"></div>{% endif %}
           </div>
         {% endfor %}{% else %}<div class="no-art">記事を取得中です…</div>{% endif %}
       </section>
@@ -974,7 +974,7 @@
                 {% if art.published %}<span class="art-time">{{ art.published }}</span>{% endif %}
               </div>
             </div>
-            {% if art.image %}<img class="art-thumb" src="{{ art.image }}" alt="" loading="lazy" onerror="this.outerHTML='<div class=\'art-thumb art-thumb-ph\' aria-hidden=\'true\'></div>'">{% else %}<div class="art-thumb art-thumb-ph" aria-hidden="true"></div>{% endif %}
+            {% if art.image %}<img class="art-thumb" src="{{ art.image }}" alt="" loading="lazy" onerror="this.outerHTML='<div class=\'art-thumb art-thumb-ph\' aria-hidden=\'true\'></div>'">{% else %}<div class="art-thumb art-thumb-ph" data-ogp="{{ art.link }}" aria-hidden="true"></div>{% endif %}
           </div>
         {% endfor %}{% else %}<div class="no-art">記事を取得中です…</div>{% endif %}
       </section>
@@ -1492,6 +1492,46 @@
         updateIcon(theme);
       }
     });
+  })();
+
+  /* ── 画像ハイドレーション ──────────────────────────────────────
+     プレースホルダー(.art-thumb-ph[data-ogp])のままの記事を、
+     サーバーのOGPキャッシュが埋まり次第リロードなしで画像に差し替える。
+     数回ポーリングし、埋まったものから消し込む。
+  ────────────────────────────────────────────────────────────── */
+  (function () {
+    function pending() {
+      return Array.from(document.querySelectorAll('.art-thumb-ph[data-ogp]'))
+        .filter(el => el.dataset.ogp && el.dataset.ogp !== '#');
+    }
+    function swap(el, src) {
+      const img = new Image();
+      img.className = 'art-thumb';
+      img.alt = '';
+      img.loading = 'lazy';
+      img.onload  = () => { el.replaceWith(img); };
+      img.onerror = () => { el.removeAttribute('data-ogp'); };  // 諦めてプレースホルダー維持
+      img.src = src;
+    }
+    async function poll(attempt) {
+      const phs = pending();
+      if (!phs.length || attempt > 6) return;
+      const links = [...new Set(phs.map(el => el.dataset.ogp))].slice(0, 60);
+      try {
+        const res = await fetch('/api/ogp', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ links }),
+        });
+        if (res.ok) {
+          const map = await res.json();
+          phs.forEach(el => { const s = map[el.dataset.ogp]; if (s) swap(el, s); });
+        }
+      } catch (_) { /* 失敗しても次のポーリングで再挑戦 */ }
+      // 徐々に間隔を広げて再ポーリング（2s,3s,4s… 最大約20s）
+      setTimeout(() => poll(attempt + 1), 2000 + attempt * 800);
+    }
+    if (pending().length) setTimeout(() => poll(0), 1500);
   })();
 </script>
 </body>
