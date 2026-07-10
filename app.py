@@ -382,7 +382,8 @@ def _fetch_ogp(url: str) -> None:
         req = urllib.request.Request(
             url,
             headers={
-                'User-Agent': 'Mozilla/5.0 (compatible; MaiChokan/1.0; +https://my-news.onrender.com)',
+                # NHK はボット風UAをタールピット（無応答）にするため通常ブラウザUAを使う
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36',
                 'Accept':          'text/html,application/xhtml+xml',
                 'Accept-Language': 'ja,en;q=0.8',
             }
