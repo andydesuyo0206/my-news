@@ -6,22 +6,22 @@
   <script>(function(){var s=localStorage.getItem('asanagi_theme'),q=window.matchMedia('(prefers-color-scheme: dark)').matches;document.documentElement.dataset.theme=s||(q?'dark':'light');}());</script>
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <meta name="theme-color" content="#0a1628">
-  <meta name="description" content="朝凪 — 朝日・NHK・Reuters など複数メディアのニュースをAI要約で整理するパーソナル朝刊ダッシュボード。">
+  <meta name="description" content="My Daily News — 朝日・NHK・Bloomberg など国内外の一次ソースをAI分析で整理するパーソナル朝刊ダッシュボード。">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <!-- OGP（SNSシェア用） -->
   <meta property="og:type" content="website">
-  <meta property="og:title" content="朝凪 — {{ now.year }}年{{ now.month }}月{{ now.day }}日（{{ weekday }}）">
+  <meta property="og:title" content="My Daily News — {{ now.year }}年{{ now.month }}月{{ now.day }}日（{{ weekday }}）">
   <meta property="og:description" content="複数メディアのニュースをAIが整理するパーソナル朝刊ダッシュボード。">
   <meta property="og:url" content="https://my-news-yqvv.onrender.com/">
   <meta name="twitter:card" content="summary">
-  <title>朝凪 — {{ now.year }}年{{ now.month }}月{{ now.day }}日（{{ weekday }}）</title>
+  <title>My Daily News — {{ now.year }}年{{ now.month }}月{{ now.day }}日（{{ weekday }}）</title>
   <!-- Emoji favicon（外部ファイル不要） -->
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🗞</text></svg>">
   <!-- PWA マニフェスト（ホーム画面への追加をサポート） -->
   <link rel="manifest" href="/manifest.json">
   <meta name="mobile-web-app-capable" content="yes">
-  <meta name="application-name" content="朝凪">
+  <meta name="application-name" content="My Daily News">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <!-- さくら選定：M PLUS 1p（適度なゴシック、丸みを抑えてクリーンに） -->
@@ -100,22 +100,13 @@
       transition: color var(--tr);
     }
     .mh-today-link:hover { color: #cce4f5; }
-    /* ロゴ：Playfair Display で高級感 */
+    /* ロゴ：Playfair Display で高級感（英字マストヘッド） */
     .mh-logo {
-      font-family: var(--font-disp); font-size: 2.1rem; font-weight: 800;
-      color: #fff; text-align: center; letter-spacing: .28em;
+      font-family: var(--font-disp); font-size: 1.9rem; font-weight: 800;
+      color: #fff; text-align: center; letter-spacing: .05em;
       display: flex; flex-direction: column; align-items: center; gap: 0;
       text-shadow: 0 1px 8px rgba(0,0,0,.3);
-    }
-    .mh-logo-kana {
-      font-family: var(--font-h); font-size: .5rem; font-weight: 500; letter-spacing: .42em;
-      color: rgba(255,255,255,.45); line-height: 1; margin-top: 2px;
-      text-shadow: none;
-    }
-    .mh-logo-sub {
-      font-family: var(--font-b); font-size: .45rem; font-weight: 400;
-      letter-spacing: .12em; color: rgba(255,255,255,.25);
-      line-height: 1; margin-top: 5px;
+      white-space: nowrap;
     }
     .mh-right {
       display: flex; flex-direction: column;
@@ -164,7 +155,7 @@
     /* コンパクト時にナビ左端にミニロゴを表示 */
     .mh-nav-logo {
       font-family: var(--font-disp); font-size: .95rem; font-weight: 800;
-      color: rgba(255,255,255,.0); letter-spacing: .18em; padding: 8px 14px 8px 6px;
+      color: rgba(255,255,255,.0); letter-spacing: .04em; padding: 8px 14px 8px 6px;
       white-space: nowrap; flex-shrink: 0; align-self: center;
       transition: color .2s ease, opacity .2s ease;
       pointer-events: none; user-select: none;
@@ -565,7 +556,7 @@
       .mh-right { display: flex; align-items: center; justify-content: flex-end; gap: 6px; }
       /* 左(mh-left) | 中央(ロゴ) | 右(ボタン群) の3カラムを維持 */
       .mh-top { grid-template-columns: 1fr auto 1fr; }
-      .mh-logo { font-size: 1.6rem; letter-spacing: .22em; }
+      .mh-logo { font-size: 1.35rem; letter-spacing: .04em; }
       /* ボトムナビ分の余白確保（safe-area-inset-bottom はiPhone Xノッチ対応） */
       .page { padding: 16px 14px calc(72px + env(safe-area-inset-bottom, 0px)); }
       /* 上部ナビはボトムナビに任せて非表示 */
@@ -772,9 +763,7 @@
         {% endif %}
       </div>
       <div class="mh-logo">
-        朝凪
-        <span class="mh-logo-kana">あさなぎ</span>
-        <span class="mh-logo-sub">点と点をつなぐ、毎日の情報整理。</span>
+        My Daily News
       </div>
       <div class="mh-right">
         <div class="mh-right-row">
@@ -792,7 +781,7 @@
       </div>
     </div>
     <nav class="mh-nav" role="navigation" aria-label="カテゴリナビ">
-      <span class="mh-nav-logo" aria-hidden="true">朝凪</span>
+      <span class="mh-nav-logo" aria-hidden="true">My Daily News</span>
       <a href="#top">🗞 主要</a>
       <a href="#keizai">💹 経済</a>
       <a href="#seiji">🏛 政治</a>
@@ -1114,7 +1103,7 @@
 <!-- ══ フッター ══════════════════════════════════════════════════ -->
 <footer class="footer">
   <div class="footer-rule"></div>
-  <div><strong style="color:rgba(255,255,255,.5);letter-spacing:.2em;">朝凪</strong></div>
+  <div><strong style="color:rgba(255,255,255,.5);letter-spacing:.12em;">My Daily News</strong></div>
   <div>朝日・毎日・NHK・Reuters・BBC・東洋経済 等の公開RSSを集約するパーソナル朝刊ダッシュボード</div>
   <div>各記事の著作権は配信元に帰属します。ニュースは30分ごとキャッシュ・AIコメントは2時間ごと更新。</div>
   <div style="margin-top:8px;opacity:.5;">Powered by Flask × Gemini 2.0 Flash × Pixabay / Render.com</div>

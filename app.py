@@ -1,5 +1,5 @@
 """
-朝凪 - Flask バックエンド
+My Daily News - Flask バックエンド
 健司選定フィード / さくら設計UI / 悠翔設計コンテンツ
 """
 import feedparser
@@ -2532,8 +2532,8 @@ def manifest():
     """PWA Web App Manifest（ホーム画面への追加をサポート）"""
     from flask import jsonify
     return jsonify({
-        "name": "朝凪 — パーソナル朝刊",
-        "short_name": "朝凪",
+        "name": "My Daily News — パーソナル朝刊",
+        "short_name": "My Daily",
         "description": "複数メディアのニュースをAIが整理するパーソナル朝刊ダッシュボード",
         "start_url": "/",
         "display": "standalone",
