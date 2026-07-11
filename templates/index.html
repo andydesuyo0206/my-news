@@ -338,12 +338,26 @@
       width: 80px; height: 58px; object-fit: cover;
       border-radius: 2px; flex-shrink: 0; background: var(--bg);
     }
-    /* 画像なし記事のプレースホルダー：レイアウト幅を統一してガタつきを防ぐ */
+    /* 画像なし記事のプレースホルダー：カテゴリ色タイル＋カテゴリ絵文字
+       セクションの --cat 変数を継承するので、経済=オレンジ・政治=紫…と自動で色が変わる */
     .art-thumb-ph {
       width: 80px; height: 58px; flex-shrink: 0;
       border-radius: 2px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1.45rem; line-height: 1; user-select: none;
+      /* color-mix 非対応ブラウザ向けフォールバック → 対応環境ではカテゴリ色で上書き */
       background: linear-gradient(135deg, var(--border-lt) 0%, var(--border) 100%);
+      background: linear-gradient(135deg,
+        color-mix(in srgb, var(--cat, var(--navy)) 10%, var(--card)) 0%,
+        color-mix(in srgb, var(--cat, var(--navy)) 24%, var(--card)) 100%);
     }
+    .art-thumb-ph::after { content: '🗞'; opacity: .85; }
+    #keizai  .art-thumb-ph::after { content: '💹'; }
+    #seiji   .art-thumb-ph::after { content: '🏛'; }
+    #kokusai .art-thumb-ph::after { content: '🌏'; }
+    #it      .art-thumb-ph::after { content: '💻'; }
+    #shakai  .art-thumb-ph::after { content: '🏙'; }
+    #bunka   .art-thumb-ph::after { content: '🎭'; }
     .art-title {
       font-family: var(--font-h); font-size: .9rem; font-weight: 700;
       color: var(--navy-dark); line-height: 1.56;
