@@ -25,8 +25,8 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <!-- さくら選定：M PLUS 1p（適度なゴシック、丸みを抑えてクリーンに） -->
-  <!-- モダン高級デザイン：Playfair Display + M PLUS 1p + Noto Sans JP -->
-  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;800&family=M+PLUS+1p:wght@400;500;700;800;900&family=Noto+Sans+JP:wght@300;400;500;700&display=swap" rel="stylesheet">
+  <!-- モダン高級デザイン：Merriweather + M PLUS 1p + Noto Sans JP -->
+  <link href="https://fonts.googleapis.com/css2?family=Merriweather:wght@700;900&family=M+PLUS+1p:wght@400;500;700;800;900&family=Noto+Sans+JP:wght@300;400;500;700&display=swap" rel="stylesheet">
   <style>
     :root {
       --navy:        #1c2e4a;
@@ -49,7 +49,7 @@
       --muted-lt:    #9a9a96;
       --shadow-sm:   0 1px 4px rgba(0,0,0,.07), 0 1px 2px rgba(0,0,0,.05);
       --shadow-md:   0 4px 20px rgba(0,0,0,.10);
-      --font-disp:   'Playfair Display', Georgia, 'Times New Roman', serif;
+      --font-disp:   'Merriweather', Georgia, 'Times New Roman', serif;
       --font-h:      'M PLUS 1p', 'Hiragino Sans', 'Meiryo', sans-serif;
       --font-b:      'Noto Sans JP', 'Hiragino Sans', 'Meiryo', sans-serif;
       --radius:      4px;
@@ -100,9 +100,9 @@
       transition: color var(--tr);
     }
     .mh-today-link:hover { color: #cce4f5; }
-    /* ロゴ：Playfair Display で高級感（英字マストヘッド） */
+    /* ロゴ：Merriweather で報道サイトらしい重厚感（英字マストヘッド） */
     .mh-logo {
-      font-family: var(--font-disp); font-size: 1.9rem; font-weight: 800;
+      font-family: var(--font-disp); font-size: 1.8rem; font-weight: 900;
       color: #fff; text-align: center; letter-spacing: .05em;
       display: flex; flex-direction: column; align-items: center; gap: 0;
       text-shadow: 0 1px 8px rgba(0,0,0,.3);
@@ -154,7 +154,7 @@
     .mh-nav a.active { color: #fff; border-bottom-color: var(--accent-lt); }
     /* コンパクト時にナビ左端にミニロゴを表示 */
     .mh-nav-logo {
-      font-family: var(--font-disp); font-size: .95rem; font-weight: 800;
+      font-family: var(--font-disp); font-size: .9rem; font-weight: 900;
       color: rgba(255,255,255,.0); letter-spacing: .04em; padding: 8px 14px 8px 6px;
       white-space: nowrap; flex-shrink: 0; align-self: center;
       transition: color .2s ease, opacity .2s ease;

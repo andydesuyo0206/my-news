@@ -348,9 +348,24 @@ def extract_keyword(title: str, category: str = '') -> str:
 # 設計：ページ表示をブロックせず、バックグラウンドスレッドで og:image を取得・キャッシュ。
 # 次のリクエスト時にキャッシュから補完して表示する。最大6並列・URL上限2000件。
 
-_ogp_cache:    dict = {}   # URL → image URL（''は取得済み・画像なし）
+_ogp_cache:    dict = {}   # URL → image URL（''は処理中マーク）
+_ogp_fail:     dict = {}   # URL → 失敗時刻。TTL経過後に再試行する（恒久失敗キャッシュを防ぐ）
+_OGP_FAIL_TTL          = 1800   # 失敗後30分で再試行
 _ogp_lock              = threading.Lock()
 _ogp_executor          = ThreadPoolExecutor(max_workers=4, thread_name_prefix='ogp')  # I/Oバウンドのため4並列
+
+
+def _ogp_should_skip(link: str) -> bool:
+    """取得済み・処理中・失敗直後（TTL内）のリンクはスキップ。呼び出し側でロック不要"""
+    with _ogp_lock:
+        if link in _ogp_cache:
+            return True
+        fail_ts = _ogp_fail.get(link)
+        if fail_ts is not None:
+            if time.time() - fail_ts < _OGP_FAIL_TTL:
+                return True
+            del _ogp_fail[link]   # TTL切れ → 再試行を許可
+    return False
 
 # og:image / twitter:image の抽出パターン（属性順不問）
 _OGP_RE = [
@@ -418,7 +433,16 @@ def _fetch_ogp(url: str) -> None:
         if len(_ogp_cache) > _OGP_CACHE_MAX:
             for k in list(_ogp_cache.keys())[:_OGP_CACHE_DROP]:
                 del _ogp_cache[k]
-        _ogp_cache[url] = img
+        if img:
+            _ogp_cache[url] = img
+        else:
+            # 失敗は恒久キャッシュせず、処理中マークを外して失敗時刻を記録
+            # → _OGP_FAIL_TTL 経過後に再試行される
+            _ogp_cache.pop(url, None)
+            _ogp_fail[url] = time.time()
+            if len(_ogp_fail) > _OGP_CACHE_MAX:
+                for k in list(_ogp_fail.keys())[:_OGP_CACHE_DROP]:
+                    del _ogp_fail[k]
 
     if img:
         print(f'[DEBUG] OGP取得: {img[:80]}')
@@ -432,9 +456,8 @@ def _prefetch_ogp(news: dict) -> None:
             link = art.get('link', '')
             if not link or link == '#' or art.get('image'):
                 continue
-            with _ogp_lock:
-                if link in _ogp_cache:
-                    continue
+            if _ogp_should_skip(link):
+                continue
             _ogp_executor.submit(_fetch_ogp, link)
             count += 1
             if count >= 100:   # Pixabay撤去に伴い100件へ拡大（OGPが記事画像の主役）
@@ -453,9 +476,8 @@ def _enqueue_missing_ogp(news: dict, limit: int = 30) -> None:
             link = art.get('link', '')
             if not link or link == '#' or art.get('image'):
                 continue
-            with _ogp_lock:
-                if link in _ogp_cache:
-                    continue
+            if _ogp_should_skip(link):
+                continue
             _ogp_executor.submit(_fetch_ogp, link)
             count += 1
     if count:
@@ -2518,12 +2540,9 @@ def api_ogp():
         img = _ogp_cache.get(link, '')
         if img:
             result[link] = img
-        else:
+        elif link and link != '#' and not _ogp_should_skip(link):
             # 未取得ならこの場でバックグラウンド取得を起動（次回ポーリングで拾う）
-            with _ogp_lock:
-                already = link in _ogp_cache
-            if not already and link and link != '#':
-                _ogp_executor.submit(_fetch_ogp, link)
+            _ogp_executor.submit(_fetch_ogp, link)
     return jsonify(result)
 
 
